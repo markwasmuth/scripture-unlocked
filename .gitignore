@@ -17,3 +17,5 @@ npm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+test-*.ps1
+scripts/__pycache__/
