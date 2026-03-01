@@ -74,10 +74,14 @@ interface StudyReaderProps {
   chapter: number;
   accentColor: string;
   mode: "text" | "listen";
+  /** Verse currently being read aloud — used for highlighting */
+  playingVerseNumber?: number;
   onStrongsClick?: (ref: string) => void;
   onVerseSelect?: (verse: VerseRow) => void;
-  onListen?: (text: string, label: string) => void;
+  onListen?: (text: string, label: string, verseNumber?: number) => void;
   onModeChange?: (mode: InteractionMode) => void;
+  /** Called when verses finish loading so parent can drive auto-continue */
+  onVersesLoaded?: (verses: VerseRow[]) => void;
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -109,19 +113,25 @@ export default function StudyReader({
   chapter,
   accentColor,
   mode,
+  playingVerseNumber,
   onStrongsClick,
   onVerseSelect,
   onListen,
   onModeChange,
+  onVersesLoaded,
 }: StudyReaderProps) {
   const [study, setStudy] = useState<StudyRow | null>(null);
   const [verses, setVerses] = useState<VerseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedVerse, setExpandedVerse] = useState<number | null>(null);
+  // Set-based expansion: listen mode keeps multiple verses open,
+  // text mode clears and toggles a single verse
+  const [expandedVerses, setExpandedVerses] = useState<Set<number>>(new Set());
   const [commentaryLevel, setCommentaryLevel] =
     useState<CommentaryLevel>("in-depth");
   const verseRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const onVersesLoadedRef = useRef(onVersesLoaded);
+  useEffect(() => { onVersesLoadedRef.current = onVersesLoaded; }, [onVersesLoaded]);
 
   // Load study + verses when book/chapter changes
   useEffect(() => {
@@ -130,7 +140,7 @@ export default function StudyReader({
     async function load() {
       setLoading(true);
       setError(null);
-      setExpandedVerse(null);
+      setExpandedVerses(new Set());
 
       try {
         const [studyData, verseData] = await Promise.all([
@@ -142,6 +152,11 @@ export default function StudyReader({
 
         setStudy(studyData);
         setVerses(verseData);
+
+        // Notify parent so it can drive auto-continue
+        if (verseData.length > 0) {
+          onVersesLoadedRef.current?.(verseData);
+        }
 
         if (verseData.length === 0) {
           setError("No verses found for this chapter.");
@@ -165,18 +180,30 @@ export default function StudyReader({
   // ── Verse Click: expand + play audio in listen mode ──
   const handleVerseClick = useCallback(
     (verse: VerseRow) => {
-      // In listen mode, clicking a verse ALSO plays its audio
+      // In listen mode, clicking a verse plays audio AND accumulates expansion
       if (mode === "listen") {
         const label = `${bookName} ${verse.chapter}:${verse.verse_number}`;
         const text = verse.commentary
           ? `${verse.verse_text}\n\n${verse.commentary}`
           : verse.verse_text;
-        onListen?.(text, label);
+        onListen?.(text, label, verse.verse_number);
+
+        // Add to expanded set (keep previous verses open)
+        setExpandedVerses((prev) => {
+          const next = new Set(prev);
+          next.add(verse.verse_number);
+          return next;
+        });
+      } else {
+        // Text mode: toggle single verse (collapse others)
+        setExpandedVerses((prev) => {
+          if (prev.has(verse.verse_number)) {
+            return new Set(); // collapse
+          }
+          return new Set([verse.verse_number]); // expand only this one
+        });
       }
 
-      setExpandedVerse((prev) =>
-        prev === verse.verse_number ? null : verse.verse_number
-      );
       onVerseSelect?.(verse);
     },
     [mode, bookName, onListen, onVerseSelect]
@@ -197,10 +224,40 @@ export default function StudyReader({
       const text = verse.commentary
         ? `${verse.verse_text}\n\n${verse.commentary}`
         : verse.verse_text;
-      onListen?.(text, label);
+      onListen?.(text, label, verse.verse_number);
+
+      // Also expand this verse in listen mode
+      if (mode === "listen") {
+        setExpandedVerses((prev) => {
+          const next = new Set(prev);
+          next.add(verse.verse_number);
+          return next;
+        });
+      }
     },
-    [bookName, onListen]
+    [bookName, onListen, mode]
   );
+
+  // ── Auto-scroll & expand when parent drives playback ──
+  useEffect(() => {
+    if (playingVerseNumber == null) return;
+
+    // Expand the playing verse (accumulate in listen mode)
+    setExpandedVerses((prev) => {
+      const next = new Set(prev);
+      next.add(playingVerseNumber);
+      return next;
+    });
+
+    // Smooth-scroll the playing verse into view
+    const el = verseRefs.current.get(playingVerseNumber);
+    if (el) {
+      // Small delay so the expansion animation has started
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+    }
+  }, [playingVerseNumber]);
 
   // ── Loading State ──
   if (loading) {
@@ -314,7 +371,8 @@ export default function StudyReader({
       {/* ── Verse List ── */}
       <div className="space-y-1">
         {verses.map((verse) => {
-          const isExpanded = expandedVerse === verse.verse_number;
+          const isExpanded = expandedVerses.has(verse.verse_number);
+          const isPlaying = playingVerseNumber === verse.verse_number;
           const strongsRefs = parseStrongsRefs(verse.strongs_refs);
           const crossRefs = parseCrossRefs(verse.cross_refs);
           const hasExtras =
@@ -338,22 +396,35 @@ export default function StudyReader({
                 rounded-lg transition-all duration-200 cursor-pointer
                 border-l-2 px-4 py-3
                 ${
-                  isExpanded
+                  isPlaying
+                    ? "bg-brand-cream/[0.05]"
+                    : isExpanded
                     ? "bg-brand-cream/[0.03]"
                     : "hover:bg-brand-cream/[0.02]"
                 }
               `}
               style={{
-                borderLeftColor: isExpanded ? accentColor : "transparent",
+                borderLeftColor: isPlaying
+                  ? accentColor
+                  : isExpanded
+                  ? `${accentColor}80`
+                  : "transparent",
+                boxShadow: isPlaying
+                  ? `0 0 15px ${accentColor}15, inset 0 0 15px ${accentColor}08`
+                  : "none",
               }}
               role="button"
               tabIndex={0}
               aria-expanded={isExpanded}
-              aria-label={`Verse ${verse.verse_number}`}
+              aria-label={`Verse ${verse.verse_number}${isPlaying ? " (now playing)" : ""}`}
             >
               {/* ── Verse Text Row ── */}
               <div className="flex items-start gap-2">
-                <p className="font-body text-sm sm:text-base leading-relaxed text-brand-cream/90 flex-1">
+                <p
+                  className={`font-body text-sm sm:text-base leading-relaxed flex-1 transition-colors duration-300 ${
+                    isPlaying ? "text-brand-cream" : "text-brand-cream/90"
+                  }`}
+                >
                   <span
                     className="font-display text-xs mr-1.5 align-super"
                     style={{ color: accentColor }}
@@ -363,27 +434,41 @@ export default function StudyReader({
                   {verse.verse_text}
                 </p>
 
-                {/* Speaker icon in Listen mode */}
+                {/* Now Playing indicator OR Speaker icon in Listen mode */}
                 {mode === "listen" && (
-                  <button
-                    onClick={(e) => handleListenVerse(verse, e)}
-                    className="shrink-0 mt-1 p-1.5 rounded-full transition-colors
-                               hover:bg-brand-cream/10"
-                    style={{ color: accentColor }}
-                    aria-label={`Listen to verse ${verse.verse_number}`}
-                    title="Listen to this verse"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="w-4 h-4"
+                  isPlaying ? (
+                    <span
+                      className="shrink-0 mt-1 px-2 py-1 rounded-full text-[10px] font-display
+                                 uppercase tracking-wider animate-pulse"
+                      style={{
+                        backgroundColor: `${accentColor}20`,
+                        color: accentColor,
+                        border: `1px solid ${accentColor}40`,
+                      }}
                     >
-                      <path d="M10 3.75a.75.75 0 00-1.264-.546L5.203 6H3.667a.75.75 0 00-.7.48A6.985 6.985 0 002.5 9.25c0 .966.195 1.886.467 2.77a.75.75 0 00.7.48h1.537l3.532 2.796A.75.75 0 0010 14.75V3.75z" />
-                      <path d="M11.305 4.882a.75.75 0 10-.61 1.37 4.002 4.002 0 010 5.997.75.75 0 00.61 1.37 5.502 5.502 0 000-8.737z" />
-                      <path d="M13.56 3.27a.75.75 0 10-.52 1.409 7.002 7.002 0 010 9.143.75.75 0 00.52 1.408 8.502 8.502 0 000-11.96z" />
-                    </svg>
-                  </button>
+                      ▶ Playing
+                    </span>
+                  ) : (
+                    <button
+                      onClick={(e) => handleListenVerse(verse, e)}
+                      className="shrink-0 mt-1 p-1.5 rounded-full transition-colors
+                                 hover:bg-brand-cream/10"
+                      style={{ color: accentColor }}
+                      aria-label={`Listen to verse ${verse.verse_number}`}
+                      title="Listen to this verse"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path d="M10 3.75a.75.75 0 00-1.264-.546L5.203 6H3.667a.75.75 0 00-.7.48A6.985 6.985 0 002.5 9.25c0 .966.195 1.886.467 2.77a.75.75 0 00.7.48h1.537l3.532 2.796A.75.75 0 0010 14.75V3.75z" />
+                        <path d="M11.305 4.882a.75.75 0 10-.61 1.37 4.002 4.002 0 010 5.997.75.75 0 00.61 1.37 5.502 5.502 0 000-8.737z" />
+                        <path d="M13.56 3.27a.75.75 0 10-.52 1.409 7.002 7.002 0 010 9.143.75.75 0 00.52 1.408 8.502 8.502 0 000-11.96z" />
+                      </svg>
+                    </button>
+                  )
                 )}
               </div>
 
@@ -428,7 +513,8 @@ export default function StudyReader({
                             e.stopPropagation();
                             onListen?.(
                               verse.commentary!,
-                              `${bookName} ${verse.chapter}:${verse.verse_number} — Commentary`
+                              `${bookName} ${verse.chapter}:${verse.verse_number} — Commentary`,
+                              verse.verse_number
                             );
                           }}
                           className="mt-2 flex items-center gap-1.5 text-[11px] font-body

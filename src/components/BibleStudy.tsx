@@ -43,6 +43,16 @@ export default function BibleStudy() {
   const [activeStrongsRef, setActiveStrongsRef] = useState<string | null>(null);
   const [activeVerse, setActiveVerse] = useState<VerseRow | null>(null);
 
+  // ── Auto-Continue Playback State ──
+  const [playingVerseNumber, setPlayingVerseNumber] = useState<number | null>(null);
+  const versesRef = useRef<VerseRow[]>([]);
+  const playingVerseRef = useRef<number | null>(null);
+  const selectedBookNameRef = useRef<string | null>(null);
+
+  // Keep refs in sync with state
+  useEffect(() => { playingVerseRef.current = playingVerseNumber; }, [playingVerseNumber]);
+  useEffect(() => { selectedBookNameRef.current = selectedBookName; }, [selectedBookName]);
+
   // ── Listen-Mode Mic State ──
   const [isListeningMic, setIsListeningMic] = useState(false);
   const [isMicProcessing, setIsMicProcessing] = useState(false);
@@ -61,11 +71,18 @@ export default function BibleStudy() {
       // Switch to text mode when selecting a new book/chapter
       if (mode === "talk") setMode("text");
       setActiveVerse(null);
+      setPlayingVerseNumber(null);
     },
     [mode]
   );
 
   const handleModeChange = useCallback((newMode: InteractionMode) => {
+    // If leaving listen mode, stop any playing audio
+    if (newMode !== "listen") {
+      const player = getAudioPlayer();
+      if (player) player.stop();
+      setPlayingVerseNumber(null);
+    }
     setMode(newMode);
   }, []);
 
@@ -77,11 +94,61 @@ export default function BibleStudy() {
     setActiveVerse(verse);
   }, []);
 
-  const handleListen = useCallback((text: string, label: string) => {
+  // Store verses when StudyReader loads them (for auto-continue)
+  const handleVersesLoaded = useCallback((loadedVerses: VerseRow[]) => {
+    versesRef.current = loadedVerses;
+  }, []);
+
+  const handleListen = useCallback((text: string, label: string, verseNumber?: number) => {
     const player = getAudioPlayer();
     if (player) {
       player.play(text, label);
     }
+    // Track which verse is playing (for highlighting + auto-continue)
+    if (verseNumber != null) {
+      setPlayingVerseNumber(verseNumber);
+    }
+  }, []);
+
+  // ── Auto-Continue: advance to next verse when audio ends ──
+  const handleAudioEnd = useCallback(() => {
+    const currentVerse = playingVerseRef.current;
+    const allVerses = versesRef.current;
+    const bookName = selectedBookNameRef.current;
+
+    if (currentVerse == null || allVerses.length === 0 || !bookName) {
+      setPlayingVerseNumber(null);
+      return;
+    }
+
+    // Find the index of the current verse
+    const currentIndex = allVerses.findIndex(
+      (v) => v.verse_number === currentVerse
+    );
+
+    // If there's a next verse, play it
+    if (currentIndex >= 0 && currentIndex < allVerses.length - 1) {
+      const nextVerse = allVerses[currentIndex + 1];
+      const label = `${bookName} ${nextVerse.chapter}:${nextVerse.verse_number}`;
+      const text = nextVerse.commentary
+        ? `${nextVerse.verse_text}\n\n${nextVerse.commentary}`
+        : nextVerse.verse_text;
+
+      setPlayingVerseNumber(nextVerse.verse_number);
+
+      const player = getAudioPlayer();
+      if (player) {
+        player.play(text, label);
+      }
+    } else {
+      // Reached end of chapter — stop
+      setPlayingVerseNumber(null);
+    }
+  }, []);
+
+  // ── User manually stops audio ──
+  const handleAudioStop = useCallback(() => {
+    setPlayingVerseNumber(null);
   }, []);
 
   // ── Listen-Mode Mic: push-to-talk in Listen mode ──
@@ -119,6 +186,9 @@ export default function BibleStudy() {
       const transcript = event.results[0][0].transcript;
       setIsListeningMic(false);
       setIsMicProcessing(true);
+
+      // Clear auto-continue state so avatar response doesn't trigger verse advance
+      setPlayingVerseNumber(null);
 
       try {
         // Build verse context for the avatar
@@ -245,10 +315,12 @@ export default function BibleStudy() {
               chapter={selectedChapter}
               accentColor={voice.accent}
               mode={mode as "text" | "listen"}
+              playingVerseNumber={playingVerseNumber ?? undefined}
               onStrongsClick={handleStrongsClick}
               onVerseSelect={handleVerseSelect}
               onListen={handleListen}
               onModeChange={handleModeChange}
+              onVersesLoaded={handleVersesLoaded}
             />
           ) : (
             // ── Welcome / Empty State ──
@@ -454,7 +526,11 @@ export default function BibleStudy() {
       )}
 
       {/* ═══ Audio Player (floating bar) ═══ */}
-      <AudioPlayer accentColor={voice.accent} />
+      <AudioPlayer
+        accentColor={voice.accent}
+        onEnd={mode === "listen" ? handleAudioEnd : undefined}
+        onStop={handleAudioStop}
+      />
     </div>
   );
 }

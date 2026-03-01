@@ -13,6 +13,10 @@ import { textToSpeech } from "@/lib/api";
 
 interface AudioPlayerProps {
   accentColor: string;
+  /** Called when audio finishes naturally (for auto-continue) */
+  onEnd?: () => void;
+  /** Called when user manually stops playback */
+  onStop?: () => void;
 }
 
 interface AudioState {
@@ -36,7 +40,7 @@ export function getAudioPlayer(): AudioPlayerHandle | null {
   return playerInstance;
 }
 
-export default function AudioPlayer({ accentColor }: AudioPlayerProps) {
+export default function AudioPlayer({ accentColor, onEnd, onStop }: AudioPlayerProps) {
   const [state, setState] = useState<AudioState>({
     isPlaying: false,
     isLoading: false,
@@ -48,6 +52,12 @@ export default function AudioPlayer({ accentColor }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const animFrameRef = useRef<number | null>(null);
+
+  // Keep callback refs fresh without re-creating play/stop
+  const onEndRef = useRef(onEnd);
+  const onStopRef = useRef(onStop);
+  useEffect(() => { onEndRef.current = onEnd; }, [onEnd]);
+  useEffect(() => { onStopRef.current = onStop; }, [onStop]);
 
   // Clean up audio and object URL
   const cleanup = useCallback(() => {
@@ -134,10 +144,15 @@ export default function AudioPlayer({ accentColor }: AudioPlayerProps) {
             isPlaying: false,
             progress: 100,
           }));
-          // Auto-hide after 2s
-          setTimeout(() => {
-            stop();
-          }, 2000);
+          // If there's an onEnd callback (auto-continue), call it
+          // Otherwise auto-hide after 2s
+          if (onEndRef.current) {
+            onEndRef.current();
+          } else {
+            setTimeout(() => {
+              stop();
+            }, 2000);
+          }
         });
 
         audio.addEventListener("error", () => {
@@ -256,7 +271,10 @@ export default function AudioPlayer({ accentColor }: AudioPlayerProps) {
 
         {/* Stop button */}
         <button
-          onClick={stop}
+          onClick={() => {
+            stop();
+            onStopRef.current?.();
+          }}
           className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center
                      text-brand-cream/40 hover:text-brand-cream/70 transition-colors"
           aria-label="Stop"
