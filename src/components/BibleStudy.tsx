@@ -1,182 +1,258 @@
-"use client";
-
 // ═══════════════════════════════════════════════════════════════
 // SCRIPTURE UNLOCKED — Main Bible Study Component
+// ═══════════════════════════════════════════════════════════════
+// Orchestrates all sub-components: VoiceSelector, BookSelector,
+// StudyReader, ChatPanel, AudioPlayer, and StrongsModal.
+// Two-tab layout: Study (read) and Ask (Q&A with avatar).
 // Created by Mark Wasmuth | Scripture Unlocked | 2026
 // ═══════════════════════════════════════════════════════════════
 
-import { useState, useRef, useEffect } from "react";
-import { BRAND, BRAND_META } from "@/lib/brand";
-import { VOICES, ELIJAH_EXPANSION_PROMPT, DEFAULT_VOICE } from "@/lib/voices";
-import type { Voice } from "@/lib/voices";
+"use client";
 
-// TODO: Migrate full v2 component from Scripture_Unlocked_v2.jsx
-// This is the production scaffold — full interactive study app goes here
+import { useState, useCallback } from "react";
+import { BRAND, BRAND_META } from "@/lib/brand";
+import { VOICES, DEFAULT_VOICE } from "@/lib/voices";
+import type { AvatarId, VerseRow } from "@/lib/api";
+
+import VoiceSelector from "./VoiceSelector";
+import BookSelector from "./BookSelector";
+import StudyReader from "./StudyReader";
+import ChatPanel from "./ChatPanel";
+import AudioPlayer, { getAudioPlayer } from "./AudioPlayer";
+import StrongsModal from "./StrongsModal";
+
+type Tab = "study" | "ask";
 
 export default function BibleStudy() {
-  const [activeVoice, setActiveVoice] = useState<string>(DEFAULT_VOICE);
+  // ── Core State ──
+  const [activeVoice, setActiveVoice] = useState<AvatarId>(
+    DEFAULT_VOICE as AvatarId
+  );
+  const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
+  const [selectedBookName, setSelectedBookName] = useState<string | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("study");
+  const [activeStrongsRef, setActiveStrongsRef] = useState<string | null>(null);
+  const [activeVerse, setActiveVerse] = useState<VerseRow | null>(null);
+
   const voice = VOICES[activeVoice];
 
+  // ── Handlers ──
+
+  const handleBookSelect = useCallback(
+    (bookId: number, bookName: string, chapter: number) => {
+      setSelectedBookId(bookId);
+      setSelectedBookName(bookName);
+      setSelectedChapter(chapter);
+      setActiveTab("study");
+      setActiveVerse(null);
+    },
+    []
+  );
+
+  const handleStrongsClick = useCallback((ref: string) => {
+    setActiveStrongsRef(ref);
+  }, []);
+
+  const handleVerseSelect = useCallback((verse: VerseRow) => {
+    setActiveVerse(verse);
+  }, []);
+
+  const handleListen = useCallback((text: string, label: string) => {
+    const player = getAudioPlayer();
+    if (player) {
+      player.play(text, label);
+    }
+  }, []);
+
+  // Build verse context string for the ChatPanel
+  const verseContext =
+    activeVerse && selectedBookName
+      ? `${selectedBookName} ${activeVerse.chapter}:${activeVerse.verse_number} — "${activeVerse.verse_text}"`
+      : selectedBookName && selectedChapter
+      ? `${selectedBookName} chapter ${selectedChapter}`
+      : undefined;
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: `linear-gradient(135deg, ${BRAND.navy} 0%, ${BRAND.navyMid} 50%, ${BRAND.navy} 100%)`,
-        color: BRAND.white,
-        fontFamily: "Georgia, serif",
-      }}
-    >
-      {/* Header */}
-      <header
-        style={{
-          textAlign: "center",
-          padding: "2rem 1rem 1rem",
-          borderBottom: `1px solid rgba(212, 174, 57, 0.2)`,
-        }}
-      >
-        <h1
-          style={{
-            fontFamily: "'Playfair Display SC', Georgia, serif",
-            color: BRAND.gold,
-            fontSize: "1.8rem",
-            letterSpacing: "0.15em",
-            marginBottom: "0.25rem",
-          }}
-        >
-          {BRAND_META.name.toUpperCase()}
+    <div className="min-h-screen bg-gradient-to-br from-brand-navy via-[#0d1b3e] to-brand-navy text-white font-body">
+      {/* ═══ Header ═══ */}
+      <header className="text-center pt-8 pb-4 px-4 border-b border-brand-gold/10">
+        <h1 className="font-display text-brand-gold text-2xl sm:text-3xl tracking-[0.15em] uppercase">
+          {BRAND_META.name}
         </h1>
-        <p style={{ color: BRAND.goldDim, fontSize: "0.85rem", opacity: 0.8 }}>
+        <p className="text-brand-gold/50 text-xs sm:text-sm mt-1 font-body">
           {BRAND_META.tagline}
         </p>
       </header>
 
-      {/* Voice Selector */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "0.75rem",
-          padding: "1.5rem 1rem",
-        }}
-      >
-        {Object.values(VOICES).map((v) => (
+      {/* ═══ Voice Selector ═══ */}
+      <VoiceSelector selected={activeVoice} onSelect={setActiveVoice} />
+
+      {/* ═══ Navigation Bar (Book Selector + Tabs) ═══ */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-brand-gold/10">
+        {/* Book Selector */}
+        <BookSelector
+          onSelect={handleBookSelect}
+          currentBook={selectedBookName ?? undefined}
+          currentChapter={selectedChapter ?? undefined}
+        />
+
+        {/* Study / Ask Tabs */}
+        <div className="flex bg-brand-cream/5 rounded-lg p-0.5">
           <button
-            key={v.id}
-            onClick={() => setActiveVoice(v.id)}
-            style={{
-              background:
-                activeVoice === v.id
-                  ? v.accent
-                  : "rgba(255, 255, 255, 0.05)",
-              color:
-                activeVoice === v.id ? BRAND.navy : "rgba(255,255,255,0.6)",
-              border: `1px solid ${
-                activeVoice === v.id ? v.accent : "rgba(255,255,255,0.15)"
-              }`,
-              borderRadius: "12px",
-              padding: "0.75rem 1.25rem",
-              cursor: "pointer",
-              fontFamily: "Georgia, serif",
-              fontSize: "0.9rem",
-              fontWeight: activeVoice === v.id ? 700 : 400,
-              transition: "all 0.2s ease",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "0.25rem",
-              minWidth: "100px",
-            }}
+            onClick={() => setActiveTab("study")}
+            className={`px-3 py-1.5 rounded-md text-xs font-display uppercase tracking-wider transition-all ${
+              activeTab === "study"
+                ? "text-brand-navy shadow-sm"
+                : "text-brand-cream/50 hover:text-brand-cream/70"
+            }`}
+            style={
+              activeTab === "study"
+                ? { backgroundColor: voice.accent, color: BRAND.navy }
+                : undefined
+            }
           >
-            <span style={{ fontSize: "1.4rem" }}>{v.icon}</span>
-            <span>{v.name}</span>
-            <span
-              style={{
-                fontSize: "0.7rem",
-                opacity: 0.8,
-              }}
-            >
-              {v.subtitle}
-            </span>
+            📖 Study
           </button>
-        ))}
-      </div>
-
-      {/* Active Voice Info */}
-      <div
-        style={{
-          textAlign: "center",
-          padding: "1rem 2rem",
-          maxWidth: "600px",
-          margin: "0 auto",
-        }}
-      >
-        <p
-          style={{
-            color: voice.accent,
-            fontStyle: "italic",
-            fontSize: "0.95rem",
-            lineHeight: 1.6,
-          }}
-        >
-          {voice.emptyStateText}
-        </p>
-      </div>
-
-      {/* Quick Questions */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          gap: "0.5rem",
-          padding: "1rem 1.5rem 2rem",
-          maxWidth: "700px",
-          margin: "0 auto",
-        }}
-      >
-        {voice.quickQuestions.map((q, i) => (
           <button
-            key={i}
-            style={{
-              background: voice.accentBg,
-              color: voice.accent,
-              border: `1px solid ${voice.accent}33`,
-              borderRadius: "20px",
-              padding: "0.5rem 1rem",
-              fontSize: "0.8rem",
-              cursor: "pointer",
-              fontFamily: "Georgia, serif",
-              transition: "all 0.2s ease",
-            }}
+            onClick={() => setActiveTab("ask")}
+            className={`px-3 py-1.5 rounded-md text-xs font-display uppercase tracking-wider transition-all ${
+              activeTab === "ask"
+                ? "text-brand-navy shadow-sm"
+                : "text-brand-cream/50 hover:text-brand-cream/70"
+            }`}
+            style={
+              activeTab === "ask"
+                ? { backgroundColor: voice.accent, color: BRAND.navy }
+                : undefined
+            }
           >
-            {q}
+            💬 Ask
           </button>
-        ))}
+        </div>
       </div>
 
-      {/* Build Status */}
-      <div
-        style={{
-          textAlign: "center",
-          padding: "3rem 2rem",
-          borderTop: `1px solid rgba(212, 174, 57, 0.1)`,
-        }}
-      >
-        <p style={{ color: BRAND.goldDim, fontSize: "0.8rem", opacity: 0.5 }}>
-          v1.0.0 — Production build in progress
-        </p>
+      {/* ═══ Main Content ═══ */}
+      <main className="pb-24">
+        {activeTab === "study" ? (
+          // ── Study Tab ──
+          selectedBookId && selectedBookName && selectedChapter ? (
+            <StudyReader
+              bookId={selectedBookId}
+              bookName={selectedBookName}
+              chapter={selectedChapter}
+              accentColor={voice.accent}
+              onStrongsClick={handleStrongsClick}
+              onVerseSelect={handleVerseSelect}
+            />
+          ) : (
+            // ── Welcome / Empty State ──
+            <div className="flex flex-col items-center justify-center py-20 px-6 gap-6">
+              <span className="text-5xl">{voice.icon}</span>
+              <div className="text-center max-w-md">
+                <h2
+                  className="font-display text-lg sm:text-xl mb-2"
+                  style={{ color: voice.accent }}
+                >
+                  Welcome to Scripture Unlocked
+                </h2>
+                <p className="text-brand-cream/50 text-sm font-body leading-relaxed">
+                  Select a book and chapter above to begin your verse-by-verse
+                  study, or switch to the <strong>Ask</strong> tab to ask{" "}
+                  {voice.name} a question about Scripture.
+                </p>
+              </div>
+
+              {/* Quick Questions as conversation starters */}
+              <div className="flex flex-wrap gap-2 justify-center mt-2 max-w-lg">
+                {voice.quickQuestions.slice(0, 3).map((q, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveTab("ask")}
+                    className="text-xs font-body px-3 py-1.5 rounded-full
+                               transition-colors hover:brightness-125"
+                    style={{
+                      backgroundColor: `${voice.accent}10`,
+                      color: `${voice.accent}CC`,
+                      border: `1px solid ${voice.accent}25`,
+                    }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+
+              {/* Verse context hint */}
+              {activeVerse && (
+                <div
+                  className="mt-4 px-4 py-2 rounded-lg text-xs font-body"
+                  style={{
+                    backgroundColor: `${voice.accent}08`,
+                    border: `1px solid ${voice.accent}15`,
+                    color: `${voice.accent}90`,
+                  }}
+                >
+                  📌 Active verse: {selectedBookName}{" "}
+                  {activeVerse.chapter}:{activeVerse.verse_number}
+                </div>
+              )}
+
+              {/* Listen to verse */}
+              {activeVerse && (
+                <button
+                  onClick={() =>
+                    handleListen(
+                      activeVerse.verse_text,
+                      `${selectedBookName} ${activeVerse.chapter}:${activeVerse.verse_number}`
+                    )
+                  }
+                  className="flex items-center gap-2 text-xs font-body px-4 py-2 rounded-lg
+                             transition-colors hover:brightness-110"
+                  style={{
+                    backgroundColor: `${voice.accent}15`,
+                    color: voice.accent,
+                    border: `1px solid ${voice.accent}25`,
+                  }}
+                >
+                  <span>🔊</span>
+                  <span>Listen to this verse</span>
+                </button>
+              )}
+            </div>
+          )
+        ) : (
+          // ── Ask Tab ──
+          <ChatPanel
+            avatar={activeVoice}
+            verseContext={verseContext}
+            accentColor={voice.accent}
+          />
+        )}
+      </main>
+
+      {/* ═══ Footer ═══ */}
+      <footer className="text-center py-6 px-4 border-t border-brand-gold/10">
         <p
-          style={{
-            color: BRAND.gold,
-            fontStyle: "italic",
-            fontSize: "0.85rem",
-            marginTop: "1rem",
-            opacity: 0.6,
-          }}
+          className="font-body text-xs italic"
+          style={{ color: `${voice.accent}50` }}
         >
           {BRAND_META.closing}
         </p>
-      </div>
+        <p className="text-brand-cream/20 text-[10px] mt-2 font-body">
+          {BRAND_META.copyright}
+        </p>
+      </footer>
+
+      {/* ═══ Strong's Modal (overlays everything) ═══ */}
+      <StrongsModal
+        reference={activeStrongsRef}
+        accentColor={voice.accent}
+        onClose={() => setActiveStrongsRef(null)}
+        onListen={handleListen}
+      />
+
+      {/* ═══ Audio Player (floating bar) ═══ */}
+      <AudioPlayer accentColor={voice.accent} />
     </div>
   );
 }
