@@ -154,28 +154,42 @@ export async function askAvatar(
 /**
  * Convert text to speech audio.
  * Returns an audio Blob that can be played with new Audio(URL.createObjectURL(blob)).
+ *
+ * NOTE: We use fetch() directly instead of supabase.functions.invoke()
+ * because the Supabase JS SDK doesn't handle binary audio responses
+ * correctly — it tries to parse the response as JSON by default,
+ * which corrupts the MP3 data. Direct fetch + .blob() works reliably.
  */
 export async function textToSpeech(params: TTSParams): Promise<Blob> {
-  const { data, error } = await supabase.functions.invoke("text-to-speech", {
-    body: params,
-  });
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (error) {
-    console.error("textToSpeech error:", error);
-    throw new Error(error.message || "Failed to generate audio");
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Missing Supabase environment variables");
   }
 
-  // The response is raw audio data
-  if (data instanceof Blob) {
-    return data;
+  const response = await fetch(
+    `${supabaseUrl}/functions/v1/text-to-speech`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        apikey: supabaseAnonKey,
+      },
+      body: JSON.stringify(params),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error("textToSpeech error:", response.status, errorData);
+    throw new Error(
+      (errorData as { error?: string }).error || `TTS failed with status ${response.status}`
+    );
   }
 
-  // If data is an ArrayBuffer, convert to Blob
-  if (data instanceof ArrayBuffer) {
-    return new Blob([data], { type: "audio/mpeg" });
-  }
-
-  throw new Error("Unexpected response format from TTS");
+  return await response.blob();
 }
 
 /**
