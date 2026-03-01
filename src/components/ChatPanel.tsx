@@ -30,8 +30,10 @@ export default function ChatPanel({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const voice = VOICES[avatar];
 
   // Auto-scroll to bottom when new messages arrive
@@ -124,6 +126,69 @@ export default function ChatPanel({
   const clearChat = useCallback(() => {
     setMessages([]);
     setError(null);
+  }, []);
+
+  // ── Speech-to-Text (Mic button) ──
+  const toggleListening = useCallback(() => {
+    // Stop if already listening
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    // Check browser support
+    const SpeechRecognition =
+      (window as /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ any).SpeechRecognition ||
+      (window as /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setError("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => setIsListening(true);
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      // Auto-resize textarea
+      if (inputRef.current) {
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.style.height = "auto";
+            inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
+          }
+        }, 0);
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error("Speech recognition error:", event.error);
+      if (event.error !== "aborted") {
+        setError("Couldn't hear you. Tap the mic and try again.");
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
+  }, [isListening]);
+
+  // Clean up recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
   }, []);
 
   return (
@@ -297,6 +362,33 @@ export default function ChatPanel({
                        resize-none overflow-hidden transition-colors"
             disabled={isLoading}
           />
+
+          {/* Mic button — speech-to-text */}
+          <button
+            onClick={toggleListening}
+            disabled={isLoading}
+            className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center
+                       transition-all disabled:opacity-30 disabled:cursor-not-allowed
+                       hover:brightness-110 ${isListening ? "animate-pulse" : ""}`}
+            style={{
+              backgroundColor: isListening ? `${accentColor}40` : `${accentColor}15`,
+              color: isListening ? accentColor : `${accentColor}80`,
+              border: isListening ? `2px solid ${accentColor}` : "2px solid transparent",
+            }}
+            aria-label={isListening ? "Stop listening" : "Speak your question"}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-5 h-5"
+            >
+              <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
+              <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709V21h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-1.541A6.751 6.751 0 015.25 12.75v-1.5a.75.75 0 01.75-.75z" />
+            </svg>
+          </button>
+
+          {/* Send button */}
           <button
             onClick={() => handleSubmit()}
             disabled={!input.trim() || isLoading}
@@ -321,7 +413,7 @@ export default function ChatPanel({
         </div>
 
         <p className="text-brand-cream/20 text-[10px] mt-2 text-center font-body">
-          Shift+Enter for new line • KJV only
+          Tap 🎤 to speak or type • Shift+Enter for new line • KJV only
         </p>
       </div>
     </div>
