@@ -45,6 +45,7 @@ export default function BibleStudy() {
 
   // ── Auto-Continue Playback State ──
   const [playingVerseNumber, setPlayingVerseNumber] = useState<number | null>(null);
+  const [audioProgress, setAudioProgress] = useState<{ currentTime: number; duration: number } | null>(null);
   const versesRef = useRef<VerseRow[]>([]);
   const playingVerseRef = useRef<number | null>(null);
   const selectedBookNameRef = useRef<string | null>(null);
@@ -99,6 +100,14 @@ export default function BibleStudy() {
     versesRef.current = loadedVerses;
   }, []);
 
+  // Track audio playback position for sentence-level text highlighting
+  const handleAudioProgress = useCallback(
+    (info: { currentTime: number; duration: number }) => {
+      setAudioProgress(info);
+    },
+    []
+  );
+
   const handleListen = useCallback((text: string, label: string, verseNumber?: number) => {
     const player = getAudioPlayer();
     if (player) {
@@ -143,12 +152,14 @@ export default function BibleStudy() {
     } else {
       // Reached end of chapter — stop
       setPlayingVerseNumber(null);
+      setAudioProgress(null);
     }
   }, []);
 
   // ── User manually stops audio ──
   const handleAudioStop = useCallback(() => {
     setPlayingVerseNumber(null);
+    setAudioProgress(null);
   }, []);
 
   // ── Listen-Mode Mic: push-to-talk in Listen mode ──
@@ -231,6 +242,11 @@ export default function BibleStudy() {
     };
 
     recognition.onend = () => setIsListeningMic(false);
+
+    // Pause any playing audio so the user isn't talking over it
+    const player = getAudioPlayer();
+    if (player) player.pause();
+
     recognition.start();
   }, [isListeningMic, activeVoice, activeVerse, selectedBookName, selectedChapter, voice.name]);
 
@@ -316,6 +332,7 @@ export default function BibleStudy() {
               accentColor={voice.accent}
               mode={mode as "text" | "listen"}
               playingVerseNumber={playingVerseNumber ?? undefined}
+              audioProgress={audioProgress}
               onStrongsClick={handleStrongsClick}
               onVerseSelect={handleVerseSelect}
               onListen={handleListen}
@@ -530,6 +547,7 @@ export default function BibleStudy() {
         accentColor={voice.accent}
         onEnd={mode === "listen" ? handleAudioEnd : undefined}
         onStop={handleAudioStop}
+        onProgress={mode === "listen" ? handleAudioProgress : undefined}
       />
     </div>
   );

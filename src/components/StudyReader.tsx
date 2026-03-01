@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { getStudy, getVersesByChapter } from "@/lib/api";
 import type { StudyRow, VerseRow } from "@/lib/api";
 import type { InteractionMode } from "./BibleStudy";
@@ -76,6 +76,8 @@ interface StudyReaderProps {
   mode: "text" | "listen";
   /** Verse currently being read aloud — used for highlighting */
   playingVerseNumber?: number;
+  /** Live audio playback position for sentence-level text highlighting */
+  audioProgress?: { currentTime: number; duration: number } | null;
   onStrongsClick?: (ref: string) => void;
   onVerseSelect?: (verse: VerseRow) => void;
   onListen?: (text: string, label: string, verseNumber?: number) => void;
@@ -105,6 +107,90 @@ function parseCrossRefs(refs: string | null): string[] {
     .filter(Boolean);
 }
 
+// ── Sentence Highlighting Helpers ─────────────────────────────
+
+/** Split text into sentences (preserving punctuation) */
+function splitIntoSentences(text: string): string[] {
+  // Match sentences ending with .!? (including trailing space)
+  // or any trailing text without terminal punctuation
+  const parts = text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
+  return parts ? parts.map((s) => s.trim()).filter(Boolean) : [text];
+}
+
+/** Count whitespace-delimited words */
+function countWords(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+/**
+ * Render text with progressive sentence-level highlighting.
+ * `progress` is 0→1 representing how far through this text block
+ * the audio has progressed.
+ */
+function HighlightedText({
+  text,
+  progress,
+  accentColor,
+}: {
+  text: string;
+  progress: number; // 0 to 1
+  accentColor: string;
+}) {
+  const sentences = useMemo(() => splitIntoSentences(text), [text]);
+  const wordCounts = useMemo(
+    () => sentences.map((s) => countWords(s)),
+    [sentences]
+  );
+  const totalWords = useMemo(
+    () => wordCounts.reduce((a, b) => a + b, 0),
+    [wordCounts]
+  );
+
+  // Build cumulative boundaries: [0, frac1, frac2, ..., 1]
+  const boundaries = useMemo(() => {
+    const b: number[] = [0];
+    let cum = 0;
+    for (const wc of wordCounts) {
+      cum += wc;
+      b.push(totalWords > 0 ? cum / totalWords : 1);
+    }
+    return b;
+  }, [wordCounts, totalWords]);
+
+  return (
+    <>
+      {sentences.map((sentence, i) => {
+        const start = boundaries[i];
+        const end = boundaries[i + 1];
+
+        // Determine state: read, active, or unread
+        let style: React.CSSProperties;
+        if (progress >= end) {
+          // Already read
+          style = { color: "rgba(245, 240, 224, 0.85)" };
+        } else if (progress >= start) {
+          // Currently being read — highlight with accent
+          style = {
+            color: accentColor,
+            textShadow: `0 0 8px ${accentColor}50`,
+            transition: "color 0.3s, text-shadow 0.3s",
+          };
+        } else {
+          // Not yet read — dimmed
+          style = { color: "rgba(245, 240, 224, 0.35)" };
+        }
+
+        return (
+          <span key={i} style={style}>
+            {sentence}
+            {i < sentences.length - 1 ? " " : ""}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 // ── Component ────────────────────────────────────────────────
 
 export default function StudyReader({
@@ -114,6 +200,7 @@ export default function StudyReader({
   accentColor,
   mode,
   playingVerseNumber,
+  audioProgress,
   onStrongsClick,
   onVerseSelect,
   onListen,
@@ -381,9 +468,43 @@ export default function StudyReader({
             crossRefs.length > 0;
 
           // Apply commentary truncation
+          // When a verse is playing, show full commentary (user hears full text)
           const commentaryData = verse.commentary
-            ? truncateCommentary(verse.commentary, commentaryLevel)
+            ? truncateCommentary(
+                verse.commentary,
+                isPlaying ? "in-depth" : commentaryLevel
+              )
             : null;
+
+          // Compute per-section progress for sentence highlighting
+          const verseWords = countWords(verse.verse_text);
+          const comWords = isPlaying && verse.commentary
+            ? countWords(verse.commentary)
+            : 0;
+          const totalAudioWords = verseWords + comWords;
+          const verseFraction =
+            totalAudioWords > 0 ? verseWords / totalAudioWords : 1;
+
+          // Map global audio progress → verse progress and commentary progress
+          const globalProgress =
+            isPlaying && audioProgress && audioProgress.duration > 0
+              ? audioProgress.currentTime / audioProgress.duration
+              : 0;
+
+          // verseProgress: 0→1 within the verse portion of audio
+          const verseProgress =
+            verseFraction > 0
+              ? Math.min(1, globalProgress / verseFraction)
+              : 0;
+
+          // commentaryProgress: 0→1 within the commentary portion
+          const commentaryProgress =
+            globalProgress > verseFraction && verseFraction < 1
+              ? Math.min(
+                  1,
+                  (globalProgress - verseFraction) / (1 - verseFraction)
+                )
+              : 0;
 
           return (
             <div
@@ -431,7 +552,15 @@ export default function StudyReader({
                   >
                     {verse.verse_number}
                   </span>
-                  {verse.verse_text}
+                  {isPlaying && audioProgress ? (
+                    <HighlightedText
+                      text={verse.verse_text}
+                      progress={verseProgress}
+                      accentColor={accentColor}
+                    />
+                  ) : (
+                    verse.verse_text
+                  )}
                 </p>
 
                 {/* Now Playing indicator OR Speaker icon in Listen mode */}
@@ -489,7 +618,15 @@ export default function StudyReader({
                       style={{ borderLeftColor: `${accentColor}30` }}
                     >
                       <p className="text-brand-cream/70 text-sm font-body leading-relaxed whitespace-pre-line">
-                        {commentaryData.text}
+                        {isPlaying && audioProgress ? (
+                          <HighlightedText
+                            text={commentaryData.text}
+                            progress={commentaryProgress}
+                            accentColor={accentColor}
+                          />
+                        ) : (
+                          commentaryData.text
+                        )}
                       </p>
 
                       {/* "Read full commentary" if truncated */}

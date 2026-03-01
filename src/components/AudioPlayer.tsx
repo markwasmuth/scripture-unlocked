@@ -17,6 +17,8 @@ interface AudioPlayerProps {
   onEnd?: () => void;
   /** Called when user manually stops playback */
   onStop?: () => void;
+  /** Called on audio timeupdate with current playback position (for text highlighting) */
+  onProgress?: (info: { currentTime: number; duration: number }) => void;
 }
 
 interface AudioState {
@@ -31,6 +33,7 @@ interface AudioState {
 export interface AudioPlayerHandle {
   play: (text: string, label?: string) => void;
   stop: () => void;
+  pause: () => void;
 }
 
 // We'll use a module-level ref so the main BibleStudy component can trigger playback
@@ -40,7 +43,7 @@ export function getAudioPlayer(): AudioPlayerHandle | null {
   return playerInstance;
 }
 
-export default function AudioPlayer({ accentColor, onEnd, onStop }: AudioPlayerProps) {
+export default function AudioPlayer({ accentColor, onEnd, onStop, onProgress }: AudioPlayerProps) {
   const [state, setState] = useState<AudioState>({
     isPlaying: false,
     isLoading: false,
@@ -56,8 +59,10 @@ export default function AudioPlayer({ accentColor, onEnd, onStop }: AudioPlayerP
   // Keep callback refs fresh without re-creating play/stop
   const onEndRef = useRef(onEnd);
   const onStopRef = useRef(onStop);
+  const onProgressRef = useRef(onProgress);
   useEffect(() => { onEndRef.current = onEnd; }, [onEnd]);
   useEffect(() => { onStopRef.current = onStop; }, [onStop]);
+  useEffect(() => { onProgressRef.current = onProgress; }, [onProgress]);
 
   // Clean up audio and object URL
   const cleanup = useCallback(() => {
@@ -104,6 +109,13 @@ export default function AudioPlayer({ accentColor, onEnd, onStop }: AudioPlayerP
       error: null,
     });
   }, [cleanup]);
+
+  // Pause current playback (without clearing state — allows resume)
+  const pause = useCallback(() => {
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+    }
+  }, []);
 
   // Play new text
   const play = useCallback(
@@ -155,6 +167,16 @@ export default function AudioPlayer({ accentColor, onEnd, onStop }: AudioPlayerP
           }
         });
 
+        // Report playback position for text highlighting (~4x/sec)
+        audio.addEventListener("timeupdate", () => {
+          if (audio.duration > 0) {
+            onProgressRef.current?.({
+              currentTime: audio.currentTime,
+              duration: audio.duration,
+            });
+          }
+        });
+
         audio.addEventListener("error", () => {
           setState((s) => ({
             ...s,
@@ -192,12 +214,12 @@ export default function AudioPlayer({ accentColor, onEnd, onStop }: AudioPlayerP
 
   // Register the player instance
   useEffect(() => {
-    playerInstance = { play, stop };
+    playerInstance = { play, stop, pause };
     return () => {
       playerInstance = null;
       cleanup();
     };
-  }, [play, stop, cleanup]);
+  }, [play, stop, pause, cleanup]);
 
   // Don't render if nothing is happening
   if (!state.isLoading && !state.isPlaying && !state.error && state.progress === 0) {
