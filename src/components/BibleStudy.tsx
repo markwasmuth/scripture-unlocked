@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════════════════════
 // Orchestrates all sub-components: VoiceSelector, BookSelector,
 // StudyReader, ChatPanel, AudioPlayer, and StrongsModal.
-// Two-tab layout: Study (read) and Ask (Q&A with avatar).
+// Three interaction modes: Text (read), Listen (audio study),
+// and Talk (Q&A with avatar).
 // Created by Mark Wasmuth | Scripture Unlocked | 2026
 // ═══════════════════════════════════════════════════════════════
 
@@ -21,7 +22,13 @@ import ChatPanel from "./ChatPanel";
 import AudioPlayer, { getAudioPlayer } from "./AudioPlayer";
 import StrongsModal from "./StrongsModal";
 
-type Tab = "study" | "ask";
+export type InteractionMode = "text" | "listen" | "talk";
+
+const MODE_CONFIG: { id: InteractionMode; icon: string; label: string }[] = [
+  { id: "text", icon: "📖", label: "Text" },
+  { id: "listen", icon: "🔊", label: "Listen" },
+  { id: "talk", icon: "💬", label: "Talk" },
+];
 
 export default function BibleStudy() {
   // ── Core State ──
@@ -31,7 +38,7 @@ export default function BibleStudy() {
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
   const [selectedBookName, setSelectedBookName] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("study");
+  const [mode, setMode] = useState<InteractionMode>("text");
   const [activeStrongsRef, setActiveStrongsRef] = useState<string | null>(null);
   const [activeVerse, setActiveVerse] = useState<VerseRow | null>(null);
 
@@ -44,11 +51,16 @@ export default function BibleStudy() {
       setSelectedBookId(bookId);
       setSelectedBookName(bookName);
       setSelectedChapter(chapter);
-      setActiveTab("study");
+      // Switch to text mode when selecting a new book/chapter
+      if (mode === "talk") setMode("text");
       setActiveVerse(null);
     },
-    []
+    [mode]
   );
+
+  const handleModeChange = useCallback((newMode: InteractionMode) => {
+    setMode(newMode);
+  }, []);
 
   const handleStrongsClick = useCallback((ref: string) => {
     setActiveStrongsRef(ref);
@@ -73,6 +85,9 @@ export default function BibleStudy() {
       ? `${selectedBookName} chapter ${selectedChapter}`
       : undefined;
 
+  // Text & Listen both show the StudyReader
+  const showReader = mode === "text" || mode === "listen";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-navy via-[#0d1b3e] to-brand-navy text-white font-body">
       {/* ═══ Header ═══ */}
@@ -85,65 +100,59 @@ export default function BibleStudy() {
         </p>
       </header>
 
-      {/* ═══ Voice Selector ═══ */}
-      <VoiceSelector selected={activeVoice} onSelect={setActiveVoice} />
+      {/* ═══ Navigation Bar ═══ */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-brand-gold/10 gap-2">
+        {/* Left: Voice Dropdown + Book Selector */}
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+          <VoiceSelector selected={activeVoice} onSelect={setActiveVoice} />
+          <span className="text-brand-gold/20 text-sm hidden sm:inline">│</span>
+          <BookSelector
+            onSelect={handleBookSelect}
+            currentBook={selectedBookName ?? undefined}
+            currentChapter={selectedChapter ?? undefined}
+          />
+        </div>
 
-      {/* ═══ Navigation Bar (Book Selector + Tabs) ═══ */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-brand-gold/10">
-        {/* Book Selector */}
-        <BookSelector
-          onSelect={handleBookSelect}
-          currentBook={selectedBookName ?? undefined}
-          currentChapter={selectedChapter ?? undefined}
-        />
-
-        {/* Study / Ask Tabs */}
-        <div className="flex bg-brand-cream/5 rounded-lg p-0.5">
-          <button
-            onClick={() => setActiveTab("study")}
-            className={`px-3 py-1.5 rounded-md text-xs font-display uppercase tracking-wider transition-all ${
-              activeTab === "study"
-                ? "text-brand-navy shadow-sm"
-                : "text-brand-cream/50 hover:text-brand-cream/70"
-            }`}
-            style={
-              activeTab === "study"
-                ? { backgroundColor: voice.accent, color: BRAND.navy }
-                : undefined
-            }
-          >
-            📖 Study
-          </button>
-          <button
-            onClick={() => setActiveTab("ask")}
-            className={`px-3 py-1.5 rounded-md text-xs font-display uppercase tracking-wider transition-all ${
-              activeTab === "ask"
-                ? "text-brand-navy shadow-sm"
-                : "text-brand-cream/50 hover:text-brand-cream/70"
-            }`}
-            style={
-              activeTab === "ask"
-                ? { backgroundColor: voice.accent, color: BRAND.navy }
-                : undefined
-            }
-          >
-            💬 Ask
-          </button>
+        {/* Right: Mode Toggle (Text / Listen / Talk) */}
+        <div className="flex bg-brand-cream/5 rounded-lg p-0.5 shrink-0">
+          {MODE_CONFIG.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => handleModeChange(m.id)}
+              className={`px-2 sm:px-3 py-1.5 rounded-md text-xs font-display uppercase tracking-wider transition-all ${
+                mode === m.id
+                  ? "text-brand-navy shadow-sm"
+                  : "text-brand-cream/50 hover:text-brand-cream/70"
+              }`}
+              style={
+                mode === m.id
+                  ? { backgroundColor: voice.accent, color: BRAND.navy }
+                  : undefined
+              }
+              aria-pressed={mode === m.id}
+            >
+              <span className="mr-1">{m.icon}</span>
+              <span className="hidden sm:inline">{m.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
       {/* ═══ Main Content ═══ */}
       <main className="pb-24">
-        {activeTab === "study" ? (
-          // ── Study Tab ──
+        {showReader ? (
+          // ── Text / Listen Mode ──
           selectedBookId && selectedBookName && selectedChapter ? (
             <StudyReader
               bookId={selectedBookId}
               bookName={selectedBookName}
               chapter={selectedChapter}
               accentColor={voice.accent}
+              mode={mode as "text" | "listen"}
               onStrongsClick={handleStrongsClick}
               onVerseSelect={handleVerseSelect}
+              onListen={handleListen}
+              onModeChange={handleModeChange}
             />
           ) : (
             // ── Welcome / Empty State ──
@@ -158,7 +167,7 @@ export default function BibleStudy() {
                 </h2>
                 <p className="text-brand-cream/50 text-sm font-body leading-relaxed">
                   Select a book and chapter above to begin your verse-by-verse
-                  study, or switch to the <strong>Ask</strong> tab to ask{" "}
+                  study, or switch to <strong>Talk</strong> mode to ask{" "}
                   {voice.name} a question about Scripture.
                 </p>
               </div>
@@ -168,7 +177,7 @@ export default function BibleStudy() {
                 {voice.quickQuestions.slice(0, 3).map((q, i) => (
                   <button
                     key={i}
-                    onClick={() => setActiveTab("ask")}
+                    onClick={() => setMode("talk")}
                     className="text-xs font-body px-3 py-1.5 rounded-full
                                transition-colors hover:brightness-125"
                     style={{
@@ -221,7 +230,7 @@ export default function BibleStudy() {
             </div>
           )
         ) : (
-          // ── Ask Tab ──
+          // ── Talk Mode ──
           <ChatPanel
             avatar={activeVoice}
             verseContext={verseContext}

@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 // Verse-by-verse study display. Tap a verse to expand its
 // commentary, Strong's references, and cross-references.
-// The "scroll" — the core reading experience.
+// Supports Text mode (silent reading) and Listen mode (audio).
 // ═══════════════════════════════════════════════════════════════
 
 "use client";
@@ -11,14 +11,18 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getStudy, getVersesByChapter } from "@/lib/api";
 import type { StudyRow, VerseRow } from "@/lib/api";
+import type { InteractionMode } from "./BibleStudy";
 
 interface StudyReaderProps {
   bookId: number;
   bookName: string;
   chapter: number;
   accentColor: string;
+  mode: "text" | "listen";
   onStrongsClick?: (ref: string) => void;
   onVerseSelect?: (verse: VerseRow) => void;
+  onListen?: (text: string, label: string) => void;
+  onModeChange?: (mode: InteractionMode) => void;
 }
 
 /** Parse Strong's references from a string like "H430, H1254, G2316" */
@@ -45,8 +49,11 @@ export default function StudyReader({
   bookName,
   chapter,
   accentColor,
+  mode,
   onStrongsClick,
   onVerseSelect,
+  onListen,
+  onModeChange,
 }: StudyReaderProps) {
   const [study, setStudy] = useState<StudyRow | null>(null);
   const [verses, setVerses] = useState<VerseRow[]>([]);
@@ -112,6 +119,18 @@ export default function StudyReader({
     [onStrongsClick]
   );
 
+  const handleListenVerse = useCallback(
+    (verse: VerseRow, e: React.MouseEvent) => {
+      e.stopPropagation();
+      const label = `${bookName} ${verse.chapter}:${verse.verse_number}`;
+      const text = verse.commentary
+        ? `${verse.verse_text}\n\n${verse.commentary}`
+        : verse.verse_text;
+      onListen?.(text, label);
+    },
+    [bookName, onListen]
+  );
+
   // ── Loading State ──
   if (loading) {
     return (
@@ -141,6 +160,30 @@ export default function StudyReader({
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-4">
+      {/* ── Floating Mode Indicator ── */}
+      {mode === "listen" && (
+        <div
+          className="sticky top-0 z-20 flex items-center justify-center gap-2
+                     py-2 mb-3 rounded-lg text-xs font-display uppercase tracking-wider"
+          style={{
+            backgroundColor: `${accentColor}12`,
+            color: accentColor,
+            border: `1px solid ${accentColor}20`,
+          }}
+        >
+          <span>🔊</span>
+          <span>Listen Mode — Tap any verse to hear it</span>
+          <button
+            onClick={() => onModeChange?.("text")}
+            className="ml-2 px-2 py-0.5 rounded text-[10px] transition-colors
+                       hover:bg-brand-cream/10"
+            style={{ border: `1px solid ${accentColor}30`, color: accentColor }}
+          >
+            Switch to Text
+          </button>
+        </div>
+      )}
+
       {/* ── Chapter Header ── */}
       <header className="text-center mb-6">
         <h2
@@ -194,16 +237,41 @@ export default function StudyReader({
               aria-expanded={isExpanded}
               aria-label={`Verse ${verse.verse_number}`}
             >
-              {/* ── Verse Text ── */}
-              <p className="font-body text-sm sm:text-base leading-relaxed text-brand-cream/90">
-                <span
-                  className="font-display text-xs mr-1.5 align-super"
-                  style={{ color: accentColor }}
-                >
-                  {verse.verse_number}
-                </span>
-                {verse.verse_text}
-              </p>
+              {/* ── Verse Text Row ── */}
+              <div className="flex items-start gap-2">
+                <p className="font-body text-sm sm:text-base leading-relaxed text-brand-cream/90 flex-1">
+                  <span
+                    className="font-display text-xs mr-1.5 align-super"
+                    style={{ color: accentColor }}
+                  >
+                    {verse.verse_number}
+                  </span>
+                  {verse.verse_text}
+                </p>
+
+                {/* Speaker icon in Listen mode */}
+                {mode === "listen" && (
+                  <button
+                    onClick={(e) => handleListenVerse(verse, e)}
+                    className="shrink-0 mt-1 p-1.5 rounded-full transition-colors
+                               hover:bg-brand-cream/10"
+                    style={{ color: accentColor }}
+                    aria-label={`Listen to verse ${verse.verse_number}`}
+                    title="Listen to this verse"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="w-4 h-4"
+                    >
+                      <path d="M10 3.75a.75.75 0 00-1.264-.546L5.203 6H3.667a.75.75 0 00-.7.48A6.985 6.985 0 002.5 9.25c0 .966.195 1.886.467 2.77a.75.75 0 00.7.48h1.537l3.532 2.796A.75.75 0 0010 14.75V3.75z" />
+                      <path d="M11.305 4.882a.75.75 0 10-.61 1.37 4.002 4.002 0 010 5.997.75.75 0 00.61 1.37 5.502 5.502 0 000-8.737z" />
+                      <path d="M13.56 3.27a.75.75 0 10-.52 1.409 7.002 7.002 0 010 9.143.75.75 0 00.52 1.408 8.502 8.502 0 000-11.96z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
 
               {/* ── Expand Hint ── */}
               {hasExtras && !isExpanded && (
@@ -224,6 +292,26 @@ export default function StudyReader({
                       <p className="text-brand-cream/70 text-sm font-body leading-relaxed whitespace-pre-line">
                         {verse.commentary}
                       </p>
+                      {/* Listen to commentary in listen mode */}
+                      {mode === "listen" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onListen?.(
+                              verse.commentary!,
+                              `${bookName} ${verse.chapter}:${verse.verse_number} — Commentary`
+                            );
+                          }}
+                          className="mt-2 flex items-center gap-1.5 text-[11px] font-body
+                                     px-2 py-1 rounded transition-colors hover:brightness-125"
+                          style={{
+                            backgroundColor: `${accentColor}10`,
+                            color: accentColor,
+                          }}
+                        >
+                          🔊 Listen to commentary
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -231,7 +319,7 @@ export default function StudyReader({
                   {strongsRefs.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       <span className="text-brand-cream/30 text-[10px] uppercase tracking-wider mr-1 self-center">
-                        Strong's:
+                        Strong&apos;s:
                       </span>
                       {strongsRefs.map((ref) => (
                         <button
