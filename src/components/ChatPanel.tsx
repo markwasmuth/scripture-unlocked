@@ -17,12 +17,14 @@ interface ChatPanelProps {
   avatar: AvatarId;
   verseContext?: string; // Current verse being studied
   accentColor: string;
+  onListen?: (text: string, label: string) => void;
 }
 
 export default function ChatPanel({
   avatar,
   verseContext,
   accentColor,
+  onListen,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -195,6 +197,25 @@ export default function ChatPanel({
                 </span>
               )}
               <div className="whitespace-pre-line">{msg.content}</div>
+              {/* Listen button on assistant messages */}
+              {msg.role === "assistant" && onListen && (
+                <button
+                  onClick={() => onListen(msg.content, `${voice.name}'s response`)}
+                  className="flex items-center gap-1.5 mt-2 text-[11px] font-body
+                             px-2.5 py-1 rounded-md transition-colors hover:brightness-125"
+                  style={{
+                    backgroundColor: `${accentColor}12`,
+                    color: `${accentColor}BB`,
+                    border: `1px solid ${accentColor}20`,
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                    <path d="M10 3.75a.75.75 0 00-1.264-.546L4.703 7H3.167a.75.75 0 00-.7.48A6.985 6.985 0 002 10c0 .887.165 1.737.468 2.52.111.29.39.48.7.48h1.535l4.033 3.796A.75.75 0 0010 16.25V3.75zM15.95 5.05a.75.75 0 00-1.06 1.061 5.5 5.5 0 010 7.778.75.75 0 001.06 1.06 7 7 0 000-9.899z" />
+                    <path d="M13.829 7.172a.75.75 0 00-1.061 1.06 2.5 2.5 0 010 3.536.75.75 0 001.06 1.06 4 4 0 000-5.656z" />
+                  </svg>
+                  Listen
+                </button>
+              )}
             </div>
           </div>
         ))}

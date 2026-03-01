@@ -226,6 +226,7 @@ export default function BibleStudy() {
             avatar={activeVoice}
             verseContext={verseContext}
             accentColor={voice.accent}
+            onListen={handleListen}
           />
         )}
       </main>
