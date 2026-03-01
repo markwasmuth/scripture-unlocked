@@ -10,9 +10,10 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { BRAND, BRAND_META } from "@/lib/brand";
 import { VOICES, DEFAULT_VOICE } from "@/lib/voices";
+import { askAvatar } from "@/lib/api";
 import type { AvatarId, VerseRow } from "@/lib/api";
 
 import VoiceSelector from "./VoiceSelector";
@@ -41,6 +42,12 @@ export default function BibleStudy() {
   const [mode, setMode] = useState<InteractionMode>("text");
   const [activeStrongsRef, setActiveStrongsRef] = useState<string | null>(null);
   const [activeVerse, setActiveVerse] = useState<VerseRow | null>(null);
+
+  // ── Listen-Mode Mic State ──
+  const [isListeningMic, setIsListeningMic] = useState(false);
+  const [isMicProcessing, setIsMicProcessing] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const voice = VOICES[activeVoice];
 
@@ -75,6 +82,95 @@ export default function BibleStudy() {
     if (player) {
       player.play(text, label);
     }
+  }, []);
+
+  // ── Listen-Mode Mic: push-to-talk in Listen mode ──
+  const handleListenModeMicToggle = useCallback(() => {
+    // Stop if already listening
+    if (isListeningMic && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListeningMic(false);
+      return;
+    }
+
+    // Check browser support
+    const SpeechRecognition =
+      (window as /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ any).SpeechRecognition ||
+      (window as /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setMicError("Speech recognition not supported in this browser.");
+      setTimeout(() => setMicError(null), 3000);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => {
+      setIsListeningMic(true);
+      setMicError(null);
+    };
+
+    recognition.onresult = async (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript;
+      setIsListeningMic(false);
+      setIsMicProcessing(true);
+
+      try {
+        // Build verse context for the avatar
+        const context =
+          activeVerse && selectedBookName
+            ? `${selectedBookName} ${activeVerse.chapter}:${activeVerse.verse_number} — "${activeVerse.verse_text}"`
+            : selectedBookName && selectedChapter
+            ? `${selectedBookName} chapter ${selectedChapter}`
+            : undefined;
+
+        // Ask the avatar
+        const response = await askAvatar({
+          avatar: activeVoice,
+          message: transcript,
+          verseContext: context,
+          mode: "normal",
+        });
+
+        // Play the response as audio
+        const player = getAudioPlayer();
+        if (player) {
+          player.play(response, `${voice.name} responds`);
+        }
+      } catch (err) {
+        console.error("Listen mode mic error:", err);
+        setMicError("Couldn't get a response. Try again.");
+        setTimeout(() => setMicError(null), 3000);
+      } finally {
+        setIsMicProcessing(false);
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error("Speech recognition error:", event.error);
+      if (event.error !== "aborted") {
+        setMicError("Couldn't hear you. Tap the mic and try again.");
+        setTimeout(() => setMicError(null), 3000);
+      }
+      setIsListeningMic(false);
+    };
+
+    recognition.onend = () => setIsListeningMic(false);
+    recognition.start();
+  }, [isListeningMic, activeVoice, activeVerse, selectedBookName, selectedChapter, voice.name]);
+
+  // Clean up speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
   }, []);
 
   // Build verse context string for the ChatPanel
@@ -260,6 +356,102 @@ export default function BibleStudy() {
         onClose={() => setActiveStrongsRef(null)}
         onListen={handleListen}
       />
+
+      {/* ═══ Listen Mode — Floating Mic FAB ═══ */}
+      {mode === "listen" && selectedBookId && (
+        <div className="fixed bottom-20 right-4 z-40 flex flex-col items-center gap-2">
+          {/* Error Toast */}
+          {micError && (
+            <div
+              className="px-3 py-1.5 rounded-lg text-[11px] font-body max-w-[200px]
+                         text-center shadow-lg animate-fadeIn"
+              style={{
+                backgroundColor: "rgba(220, 38, 38, 0.9)",
+                color: "#fff",
+              }}
+            >
+              {micError}
+            </div>
+          )}
+
+          {/* Processing indicator */}
+          {isMicProcessing && (
+            <div
+              className="px-3 py-1.5 rounded-lg text-[11px] font-body shadow-lg animate-fadeIn"
+              style={{
+                backgroundColor: `${voice.accent}20`,
+                color: voice.accent,
+                border: `1px solid ${voice.accent}30`,
+              }}
+            >
+              {voice.name} is thinking…
+            </div>
+          )}
+
+          {/* Mic Button */}
+          <button
+            onClick={handleListenModeMicToggle}
+            disabled={isMicProcessing}
+            className={`w-14 h-14 rounded-full flex items-center justify-center
+                       shadow-2xl transition-all
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       hover:scale-105 active:scale-95
+                       ${isListeningMic ? "animate-pulse" : ""}`}
+            style={{
+              backgroundColor: isListeningMic
+                ? "#dc2626"
+                : isMicProcessing
+                ? `${voice.accent}40`
+                : voice.accent,
+              color: isListeningMic ? "#fff" : BRAND.navy,
+              boxShadow: isListeningMic
+                ? "0 0 20px rgba(220, 38, 38, 0.5)"
+                : `0 4px 20px ${voice.accent}40`,
+            }}
+            aria-label={
+              isListeningMic
+                ? "Stop listening"
+                : isMicProcessing
+                ? "Processing..."
+                : "Ask a question"
+            }
+          >
+            {isMicProcessing ? (
+              // Spinner while processing
+              <div
+                className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+                style={{ borderColor: voice.accent, borderTopColor: "transparent" }}
+              />
+            ) : (
+              // Mic icon
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-6 h-6"
+              >
+                <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
+                <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709V21h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-1.541A6.751 6.751 0 015.25 12.75v-1.5a.75.75 0 01.75-.75z" />
+              </svg>
+            )}
+          </button>
+
+          {/* Label */}
+          {!isListeningMic && !isMicProcessing && (
+            <span
+              className="text-[10px] font-body uppercase tracking-wider"
+              style={{ color: `${voice.accent}80` }}
+            >
+              Ask
+            </span>
+          )}
+          {isListeningMic && (
+            <span className="text-[10px] font-body uppercase tracking-wider text-red-400">
+              Listening…
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ═══ Audio Player (floating bar) ═══ */}
       <AudioPlayer accentColor={voice.accent} />

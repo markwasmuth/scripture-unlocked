@@ -4,6 +4,7 @@
 // Verse-by-verse study display. Tap a verse to expand its
 // commentary, Strong's references, and cross-references.
 // Supports Text mode (silent reading) and Listen mode (audio).
+// Three commentary levels: Light, Medium, In-Depth.
 // ═══════════════════════════════════════════════════════════════
 
 "use client";
@@ -12,6 +13,60 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { getStudy, getVersesByChapter } from "@/lib/api";
 import type { StudyRow, VerseRow } from "@/lib/api";
 import type { InteractionMode } from "./BibleStudy";
+
+// ── Commentary Level Types ───────────────────────────────────
+
+export type CommentaryLevel = "light" | "medium" | "in-depth";
+
+const COMMENTARY_LEVELS: {
+  id: CommentaryLevel;
+  label: string;
+  icon: string;
+}[] = [
+  { id: "light", label: "Light", icon: "○" },
+  { id: "medium", label: "Medium", icon: "◐" },
+  { id: "in-depth", label: "In-Depth", icon: "●" },
+];
+
+/**
+ * Truncate commentary based on the selected depth level.
+ * Light  → first 1-2 sentences
+ * Medium → first paragraph (or ~150 words)
+ * In-Depth → full text (no truncation)
+ */
+function truncateCommentary(
+  text: string,
+  level: CommentaryLevel
+): { text: string; truncated: boolean } {
+  if (level === "in-depth" || !text) {
+    return { text, truncated: false };
+  }
+
+  if (level === "light") {
+    // First 1-2 sentences: find the end of the 2nd sentence
+    const sentences = text.match(/[^.!?]*[.!?]+/g);
+    if (sentences && sentences.length > 2) {
+      const lightText = sentences.slice(0, 2).join("").trim();
+      return { text: lightText, truncated: true };
+    }
+    return { text, truncated: false };
+  }
+
+  // Medium: first paragraph (up to first double newline) or ~150 words
+  const paragraphBreak = text.indexOf("\n\n");
+  if (paragraphBreak > 0 && paragraphBreak < text.length - 2) {
+    return { text: text.substring(0, paragraphBreak).trim(), truncated: true };
+  }
+
+  const words = text.split(/\s+/);
+  if (words.length > 150) {
+    return { text: words.slice(0, 150).join(" ") + "…", truncated: true };
+  }
+
+  return { text, truncated: false };
+}
+
+// ── Props ────────────────────────────────────────────────────
 
 interface StudyReaderProps {
   bookId: number;
@@ -25,6 +80,8 @@ interface StudyReaderProps {
   onModeChange?: (mode: InteractionMode) => void;
 }
 
+// ── Helpers ──────────────────────────────────────────────────
+
 /** Parse Strong's references from a string like "H430, H1254, G2316" */
 function parseStrongsRefs(refs: string | null): string[] {
   if (!refs) return [];
@@ -35,7 +92,7 @@ function parseStrongsRefs(refs: string | null): string[] {
     .map((r) => r.toUpperCase());
 }
 
-/** Parse cross-references from a string like "John 1:1, Hebrews 11:3" */
+/** Parse cross-references from a string like "John 1:1; Hebrews 11:3" */
 function parseCrossRefs(refs: string | null): string[] {
   if (!refs) return [];
   return refs
@@ -43,6 +100,8 @@ function parseCrossRefs(refs: string | null): string[] {
     .map((r) => r.trim())
     .filter(Boolean);
 }
+
+// ── Component ────────────────────────────────────────────────
 
 export default function StudyReader({
   bookId,
@@ -60,6 +119,8 @@ export default function StudyReader({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedVerse, setExpandedVerse] = useState<number | null>(null);
+  const [commentaryLevel, setCommentaryLevel] =
+    useState<CommentaryLevel>("in-depth");
   const verseRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Load study + verses when book/chapter changes
@@ -101,14 +162,24 @@ export default function StudyReader({
     };
   }, [bookId, chapter]);
 
+  // ── Verse Click: expand + play audio in listen mode ──
   const handleVerseClick = useCallback(
     (verse: VerseRow) => {
+      // In listen mode, clicking a verse ALSO plays its audio
+      if (mode === "listen") {
+        const label = `${bookName} ${verse.chapter}:${verse.verse_number}`;
+        const text = verse.commentary
+          ? `${verse.verse_text}\n\n${verse.commentary}`
+          : verse.verse_text;
+        onListen?.(text, label);
+      }
+
       setExpandedVerse((prev) =>
         prev === verse.verse_number ? null : verse.verse_number
       );
       onVerseSelect?.(verse);
     },
-    [onVerseSelect]
+    [mode, bookName, onListen, onVerseSelect]
   );
 
   const handleStrongsClick = useCallback(
@@ -137,7 +208,10 @@ export default function StudyReader({
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <div
           className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
-          style={{ borderColor: `${accentColor}40`, borderTopColor: "transparent" }}
+          style={{
+            borderColor: `${accentColor}40`,
+            borderTopColor: "transparent",
+          }}
         />
         <p className="text-brand-cream/50 text-sm font-body">
           Loading {bookName} {chapter}...
@@ -160,7 +234,7 @@ export default function StudyReader({
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-4">
-      {/* ── Floating Mode Indicator ── */}
+      {/* ── Floating Mode Indicator (Listen) ── */}
       {mode === "listen" && (
         <div
           className="sticky top-0 z-20 flex items-center justify-center gap-2
@@ -177,7 +251,10 @@ export default function StudyReader({
             onClick={() => onModeChange?.("text")}
             className="ml-2 px-2 py-0.5 rounded text-[10px] transition-colors
                        hover:bg-brand-cream/10"
-            style={{ border: `1px solid ${accentColor}30`, color: accentColor }}
+            style={{
+              border: `1px solid ${accentColor}30`,
+              color: accentColor,
+            }}
           >
             Switch to Text
           </button>
@@ -185,7 +262,7 @@ export default function StudyReader({
       )}
 
       {/* ── Chapter Header ── */}
-      <header className="text-center mb-6">
+      <header className="text-center mb-4">
         <h2
           className="font-display text-xl sm:text-2xl tracking-wide"
           style={{ color: accentColor }}
@@ -204,6 +281,36 @@ export default function StudyReader({
         )}
       </header>
 
+      {/* ── Commentary Level Toggle ── */}
+      <div className="flex items-center justify-center gap-1 mb-4">
+        <span className="text-brand-cream/30 text-[10px] uppercase tracking-wider mr-2 font-display">
+          Commentary:
+        </span>
+        {COMMENTARY_LEVELS.map((level) => (
+          <button
+            key={level.id}
+            onClick={() => setCommentaryLevel(level.id)}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-body transition-all ${
+              commentaryLevel === level.id
+                ? "shadow-sm"
+                : "text-brand-cream/40 hover:text-brand-cream/60"
+            }`}
+            style={
+              commentaryLevel === level.id
+                ? {
+                    backgroundColor: `${accentColor}20`,
+                    color: accentColor,
+                    border: `1px solid ${accentColor}40`,
+                  }
+                : { border: "1px solid transparent" }
+            }
+          >
+            <span className="mr-1">{level.icon}</span>
+            {level.label}
+          </button>
+        ))}
+      </div>
+
       {/* ── Verse List ── */}
       <div className="space-y-1">
         {verses.map((verse) => {
@@ -211,7 +318,14 @@ export default function StudyReader({
           const strongsRefs = parseStrongsRefs(verse.strongs_refs);
           const crossRefs = parseCrossRefs(verse.cross_refs);
           const hasExtras =
-            verse.commentary || strongsRefs.length > 0 || crossRefs.length > 0;
+            verse.commentary ||
+            strongsRefs.length > 0 ||
+            crossRefs.length > 0;
+
+          // Apply commentary truncation
+          const commentaryData = verse.commentary
+            ? truncateCommentary(verse.commentary, commentaryLevel)
+            : null;
 
           return (
             <div
@@ -284,14 +398,29 @@ export default function StudyReader({
               {isExpanded && hasExtras && (
                 <div className="mt-3 space-y-3 animate-fadeIn">
                   {/* Commentary */}
-                  {verse.commentary && (
+                  {commentaryData && (
                     <div
                       className="pl-3 border-l"
                       style={{ borderLeftColor: `${accentColor}30` }}
                     >
                       <p className="text-brand-cream/70 text-sm font-body leading-relaxed whitespace-pre-line">
-                        {verse.commentary}
+                        {commentaryData.text}
                       </p>
+
+                      {/* "Read full commentary" if truncated */}
+                      {commentaryData.truncated && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCommentaryLevel("in-depth");
+                          }}
+                          className="mt-1.5 text-[11px] font-body transition-colors hover:brightness-125"
+                          style={{ color: `${accentColor}90` }}
+                        >
+                          ▸ Read full commentary
+                        </button>
+                      )}
+
                       {/* Listen to commentary in listen mode */}
                       {mode === "listen" && (
                         <button
