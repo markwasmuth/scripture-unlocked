@@ -1,0 +1,9 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display+SC:wght@400;700&display=swap");
+:root { --brand-gold: #d4ae39; --brand-navy: #14142e; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family: Georgia, serif; background: var(--brand-navy); color: #1F2937; -webkit-font-smoothing: antialiased; }
+body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+html { overscroll-behavior: none; }
