@@ -32,6 +32,8 @@ export default function ChatPanel({
   const [error, setError] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [voiceMode, setVoiceMode] = useState(false); // true = full voice convo (auto-submit + auto-speak)
+  const finalTranscriptRef = useRef(""); // accumulates final text during voice session
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -79,11 +81,10 @@ export default function ChatPanel({
       setIsLoading(true);
 
       try {
-        // Call the avatar API (non-streaming for reliability)
         const response = await askAvatar({
           avatar,
           message: text,
-          conversationHistory: updatedHistory.slice(-10), // Last 10 messages for context
+          conversationHistory: updatedHistory.slice(-10),
           verseContext,
           mode: "normal",
         });
@@ -93,6 +94,11 @@ export default function ChatPanel({
           content: response,
         };
         setMessages((prev) => [...prev, assistantMessage]);
+
+        // In voice mode: auto-speak the response
+        if (voiceMode && onListen) {
+          onListen(response, `${voice.name}'s response`);
+        }
       } catch (err) {
         console.error("Chat error:", err);
         setError(
@@ -154,6 +160,8 @@ export default function ChatPanel({
     recognition.lang = "en-US";
     recognitionRef.current = recognition;
 
+    finalTranscriptRef.current = "";
+
     recognition.onstart = () => {
       setIsListening(true);
       setInterimTranscript("");
@@ -161,29 +169,15 @@ export default function ChatPanel({
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = "";
-      let final = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const t = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          final += t;
+          finalTranscriptRef.current += (finalTranscriptRef.current ? " " : "") + t;
         } else {
           interim += t;
         }
       }
-      // Show live interim text so user can see what's being heard
-      setInterimTranscript(interim);
-      // Commit final text to input
-      if (final) {
-        setInput((prev) => (prev ? `${prev} ${final}` : final));
-        setInterimTranscript("");
-        // Auto-resize textarea
-        setTimeout(() => {
-          if (inputRef.current) {
-            inputRef.current.style.height = "auto";
-            inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
-          }
-        }, 0);
-      }
+      setInterimTranscript(interim || finalTranscriptRef.current);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -193,11 +187,30 @@ export default function ChatPanel({
       }
       setIsListening(false);
       setInterimTranscript("");
+      finalTranscriptRef.current = "";
     };
 
     recognition.onend = () => {
       setIsListening(false);
       setInterimTranscript("");
+      const spoken = finalTranscriptRef.current.trim();
+      finalTranscriptRef.current = "";
+
+      if (spoken) {
+        if (voiceMode) {
+          // Voice mode: auto-submit directly, don't put in text box
+          handleSubmit(spoken);
+        } else {
+          // Text mode: populate input box, user taps send
+          setInput(spoken);
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.style.height = "auto";
+              inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
+            }
+          }, 0);
+        }
+      }
     };
 
     recognition.start();
@@ -353,44 +366,62 @@ export default function ChatPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Listening Status Banner ── */}
-      {isListening && (
+      {/* ── Voice Mode Banner (always visible when voiceMode on) ── */}
+      {voiceMode && (
         <div
-          className="mx-4 mb-2 rounded-xl px-4 py-3 flex flex-col gap-1.5"
+          className="mx-4 mb-2 rounded-xl px-4 py-3 flex flex-col gap-2"
           style={{
-            backgroundColor: `${accentColor}12`,
-            border: `1px solid ${accentColor}35`,
+            backgroundColor: isListening ? `${accentColor}15` : `${accentColor}08`,
+            border: `1px solid ${isListening ? accentColor + "50" : accentColor + "20"}`,
+            transition: "all 0.2s",
           }}
         >
-          {/* Status row */}
+          {/* Top row: status + end button */}
           <div className="flex items-center gap-2">
-            {/* Pulsing mic dot */}
             <span
-              className="w-2.5 h-2.5 rounded-full animate-pulse flex-shrink-0"
-              style={{ backgroundColor: "#ef4444" }}
+              className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isListening ? "animate-pulse" : ""}`}
+              style={{ backgroundColor: isListening ? "#ef4444" : `${accentColor}60` }}
             />
             <span
               className="text-xs font-display uppercase tracking-widest"
-              style={{ color: accentColor }}
+              style={{ color: isListening ? accentColor : `${accentColor}70` }}
             >
-              Listening…
+              {isListening ? "Listening…" : isLoading ? `${voice.name} is speaking…` : "Voice mode on — tap mic to speak"}
             </span>
             <button
-              onClick={toggleListening}
+              onClick={() => { setVoiceMode(false); if (isListening && recognitionRef.current) recognitionRef.current.stop(); }}
               className="ml-auto text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md"
-              style={{
-                color: `${accentColor}80`,
-                border: `1px solid ${accentColor}30`,
-              }}
+              style={{ color: `${accentColor}70`, border: `1px solid ${accentColor}25` }}
             >
-              Done
+              End
             </button>
           </div>
           {/* Live transcript */}
-          <p
-            className="text-sm font-body min-h-[20px] italic leading-snug"
-            style={{ color: interimTranscript ? `${accentColor}CC` : `${accentColor}40` }}
-          >
+          {isListening && (
+            <p
+              className="text-sm font-body min-h-[20px] italic leading-snug"
+              style={{ color: interimTranscript ? `${accentColor}DD` : `${accentColor}40` }}
+            >
+              {interimTranscript || "Speak now — I'm hearing you…"}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Non-voice-mode listening banner ── */}
+      {!voiceMode && isListening && (
+        <div
+          className="mx-4 mb-2 rounded-xl px-4 py-3 flex flex-col gap-1.5"
+          style={{ backgroundColor: `${accentColor}12`, border: `1px solid ${accentColor}35` }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full animate-pulse flex-shrink-0" style={{ backgroundColor: "#ef4444" }} />
+            <span className="text-xs font-display uppercase tracking-widest" style={{ color: accentColor }}>Listening…</span>
+            <button onClick={toggleListening} className="ml-auto text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md"
+              style={{ color: `${accentColor}80`, border: `1px solid ${accentColor}30` }}>Done</button>
+          </div>
+          <p className="text-sm font-body min-h-[20px] italic leading-snug"
+            style={{ color: interimTranscript ? `${accentColor}CC` : `${accentColor}40` }}>
             {interimTranscript || "Speak now — I'm hearing you…"}
           </p>
         </div>
@@ -476,9 +507,22 @@ export default function ChatPanel({
           </button>
         </div>
 
-        <p className="text-brand-cream/20 text-[10px] mt-2 text-center font-body">
-          Tap 🎤 to speak or type • Shift+Enter for new line • KJV only
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-[10px] font-body" style={{ color: "var(--text-muted)" }}>
+            Tap 🎤 to speak or type • KJV only
+          </p>
+          {/* Voice Mode toggle */}
+          <button
+            onClick={() => setVoiceMode((v) => !v)}
+            className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-md transition-all"
+            style={voiceMode
+              ? { backgroundColor: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}50` }
+              : { color: "var(--text-muted)", border: "1px solid var(--bg-border)" }
+            }
+          >
+            🎙 Voice Mode {voiceMode ? "On" : "Off"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -6,37 +6,37 @@
 
 /* ── Theme Variables ─────────────────────────────── */
 :root {
-  /* Sacred Ember (Dark) — default */
-  --bg-primary: #1A0F00;
-  --bg-surface: #2B1A00;
-  --bg-elevated: #3D2B0A;
-  --bg-border: #4E3A15;
-  --gold: #D4A843;
-  --gold-bright: #F0C060;
-  --gold-glow: rgba(212,168,67,0.15);
-  --text-primary: #F5EDD0;
-  --text-secondary: #C8B89A;
-  --text-muted: #8A7560;
-  --verse-hover: rgba(212,168,67,0.04);
-  --verse-active: rgba(212,168,67,0.08);
-  --tab-active-bg: rgba(212,168,67,0.06);
+  /* Slate & Gold (Dark) — default */
+  --bg-primary:  #1C1F26;
+  --bg-surface:  #23272F;
+  --bg-elevated: #2C3140;
+  --bg-border:   #353B4A;
+  --gold:        #E6C55A;
+  --gold-bright: #F5D878;
+  --gold-glow:   rgba(230,197,90,0.14);
+  --text-primary:   #CDD5E0;
+  --text-secondary: #8892A4;
+  --text-muted:     #555E6E;
+  --verse-hover:  rgba(230,197,90,0.04);
+  --verse-active: rgba(230,197,90,0.09);
+  --tab-active-bg: rgba(230,197,90,0.07);
 }
 
 [data-theme='light'] {
-  /* Ancient Parchment (Light) */
-  --bg-primary: #F5EDD0;
-  --bg-surface: #EDE0BC;
-  --bg-elevated: #E4D3A5;
-  --bg-border: #C8B078;
-  --gold: #8B6914;
-  --gold-bright: #6B4F10;
-  --gold-glow: rgba(139,105,20,0.12);
-  --text-primary: #2C1A00;
-  --text-secondary: #5C3D10;
-  --text-muted: #9C7A40;
-  --verse-hover: rgba(139,105,20,0.04);
-  --verse-active: rgba(139,105,20,0.08);
-  --tab-active-bg: rgba(139,105,20,0.06);
+  /* Cloud & Stone (Light) */
+  --bg-primary:  #F2F2EE;
+  --bg-surface:  #E8E8E2;
+  --bg-elevated: #DDDDD6;
+  --bg-border:   #C8C8C0;
+  --gold:        #7A6030;
+  --gold-bright: #A0803E;
+  --gold-glow:   rgba(122,96,48,0.12);
+  --text-primary:   #1A1A1A;
+  --text-secondary: #3D3D3D;
+  --text-muted:     #707070;
+  --verse-hover:  rgba(122,96,48,0.04);
+  --verse-active: rgba(122,96,48,0.09);
+  --tab-active-bg: rgba(122,96,48,0.07);
 }
 
 /* ── Base Reset ─────────────────────────────── */
