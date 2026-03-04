@@ -66,46 +66,36 @@ function stripLeadingVerseQuote(commentary: string, verseText: string): string {
 }
 
 /**
- * Truncate commentary based on the selected depth level.
- * Light  → first sentence
- * Medium → first 3 sentences (~60 words)
- * In-Depth → full text (no truncation)
+ * Truncate commentary to approximate line counts (100 chars/line).
+ * Light   → 2 lines  (~200 chars)
+ * Medium  → 5 lines  (~500 chars)
+ * In-Depth→ 10 lines (~1000 chars)
+ * If the text is naturally shorter, show it all without a "read more" link.
  */
+const DEPTH_CHAR_LIMITS: Record<CommentaryLevel, number> = {
+  light:    200,
+  medium:   500,
+  "in-depth": 1000,
+};
+
 function truncateCommentary(
   text: string,
   level: CommentaryLevel
 ): { text: string; truncated: boolean } {
-  if (level === "in-depth" || !text) {
+  if (!text) return { text: "", truncated: false };
+
+  const limit = DEPTH_CHAR_LIMITS[level];
+
+  if (text.length <= limit) {
     return { text, truncated: false };
   }
 
-  const sentences = text.match(/[^.!?]*[.!?]+/g) ?? [];
+  // Break at last sentence boundary before the limit
+  const slice = text.slice(0, limit);
+  const lastSentence = slice.search(/[^.!?]*[.!?][^.!?]*$/);
+  const cut = lastSentence > limit * 0.6 ? lastSentence + 1 : limit;
 
-  if (level === "light") {
-    // First sentence only
-    if (sentences.length > 1 && sentences[0]) {
-      return { text: sentences[0].trim(), truncated: true };
-    }
-    // Fallback: cap at 40 words
-    const words = text.split(/\s+/);
-    if (words.length > 40) {
-      return { text: words.slice(0, 40).join(" ") + "…", truncated: true };
-    }
-    return { text, truncated: false };
-  }
-
-  // Medium: first 3 sentences or ~60 words — whichever is shorter
-  if (sentences.length > 3) {
-    const medText = sentences.slice(0, 3).join("").trim();
-    return { text: medText, truncated: true };
-  }
-
-  const words = text.split(/\s+/);
-  if (words.length > 60) {
-    return { text: words.slice(0, 60).join(" ") + "…", truncated: true };
-  }
-
-  return { text, truncated: false };
+  return { text: text.slice(0, cut).trimEnd() + "…", truncated: true };
 }
 
 // ── Props ────────────────────────────────────────────────────
