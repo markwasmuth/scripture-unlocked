@@ -42,25 +42,30 @@ function truncateCommentary(
     return { text, truncated: false };
   }
 
+  const sentences = text.match(/[^.!?]*[.!?]+/g) ?? [];
+
   if (level === "light") {
-    // First 1-2 sentences: find the end of the 2nd sentence
-    const sentences = text.match(/[^.!?]*[.!?]+/g);
-    if (sentences && sentences.length > 2) {
-      const lightText = sentences.slice(0, 2).join("").trim();
-      return { text: lightText, truncated: true };
+    // First sentence only
+    if (sentences.length > 1 && sentences[0]) {
+      return { text: sentences[0].trim(), truncated: true };
+    }
+    // Fallback: cap at 40 words
+    const words = text.split(/\s+/);
+    if (words.length > 40) {
+      return { text: words.slice(0, 40).join(" ") + "…", truncated: true };
     }
     return { text, truncated: false };
   }
 
-  // Medium: first paragraph (up to first double newline) or ~150 words
-  const paragraphBreak = text.indexOf("\n\n");
-  if (paragraphBreak > 0 && paragraphBreak < text.length - 2) {
-    return { text: text.substring(0, paragraphBreak).trim(), truncated: true };
+  // Medium: first 3 sentences or ~60 words — whichever is shorter
+  if (sentences.length > 3) {
+    const medText = sentences.slice(0, 3).join("").trim();
+    return { text: medText, truncated: true };
   }
 
   const words = text.split(/\s+/);
-  if (words.length > 150) {
-    return { text: words.slice(0, 150).join(" ") + "…", truncated: true };
+  if (words.length > 60) {
+    return { text: words.slice(0, 60).join(" ") + "…", truncated: true };
   }
 
   return { text, truncated: false };
@@ -167,7 +172,7 @@ function HighlightedText({
         let style: React.CSSProperties;
         if (progress >= end) {
           // Already read
-          style = { color: "rgba(245, 240, 224, 0.85)" };
+          style = { color: "var(--text-secondary)" };
         } else if (progress >= start) {
           // Currently being read — highlight with accent
           style = {
@@ -177,7 +182,7 @@ function HighlightedText({
           };
         } else {
           // Not yet read — dimmed
-          style = { color: "rgba(245, 240, 224, 0.35)" };
+          style = { color: "var(--text-muted)" };
         }
 
         return (
@@ -567,7 +572,7 @@ export default function StudyReader({
 
               {/* ── Expand Hint ── */}
               {hasExtras && !isExpanded && (
-                <p className="text-brand-cream/20 text-[10px] mt-1 font-body">
+                <p className="text-[10px] mt-1 font-inter" style={{ color: 'var(--text-muted)' }}>
                   tap to expand commentary
                 </p>
               )}
@@ -577,11 +582,9 @@ export default function StudyReader({
                 <div className="mt-3 space-y-3 animate-fadeIn">
                   {/* Commentary */}
                   {commentaryData && (
-                    <div
-                      className="pl-3 border-l"
-                      style={{ borderLeftColor: `${accentColor}30` }}
-                    >
-                      <p className="text-brand-cream/70 text-sm font-body leading-relaxed whitespace-pre-line">
+                    <div className="commentary-panel">
+                      <div className="commentary-label">Moses Explains</div>
+                      <p className="commentary-text whitespace-pre-line">
                         {isPlaying && audioProgress ? (
                           <HighlightedText
                             text={commentaryData.text}
@@ -600,8 +603,8 @@ export default function StudyReader({
                             e.stopPropagation();
                             setCommentaryLevel("in-depth");
                           }}
-                          className="mt-1.5 text-[11px] font-body transition-colors hover:brightness-125"
-                          style={{ color: `${accentColor}90` }}
+                          className="mt-1.5 text-[11px] font-inter transition-colors"
+                          style={{ color: 'var(--gold)' }}
                         >
                           ▸ Read full commentary
                         </button>
