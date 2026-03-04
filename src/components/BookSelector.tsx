@@ -27,6 +27,13 @@ const TESTAMENT_LABELS: Record<Testament, string> = {
   PS: "Pseudepigrapha",
 };
 
+const TESTAMENT_SHORT: Record<Testament, string> = {
+  OT: "Old Testament",
+  NT: "New Testament",
+  AP: "Apocrypha",
+  PS: "Enoch",
+};
+
 const TESTAMENT_ORDER: Testament[] = ["OT", "NT", "AP", "PS"];
 
 export default function BookSelector({
@@ -171,7 +178,7 @@ export default function BookSelector({
             /* ── Book List ── */
             <div>
               {/* Testament Tabs */}
-              <div className="flex border-b border-brand-gold/10">
+              <div className="flex border-b border-brand-gold/10 overflow-x-auto">
                 {TESTAMENT_ORDER.map((t) => {
                   if (booksByTestament[t].length === 0) return null;
                   return (
@@ -179,15 +186,15 @@ export default function BookSelector({
                       key={t}
                       onClick={() => setActiveTestament(t)}
                       className={`
-                        flex-1 px-2 py-2.5 text-xs sm:text-sm font-display transition-colors
+                        flex-1 min-w-fit px-3 py-3 text-xs font-display transition-colors whitespace-nowrap
                         ${
                           activeTestament === t
-                            ? "text-brand-gold border-b-2 border-brand-gold"
-                            : "text-brand-cream/40 hover:text-brand-cream/70"
+                            ? "text-brand-gold border-b-2 border-brand-gold bg-brand-gold/5"
+                            : "text-brand-cream/50 hover:text-brand-cream/80 hover:bg-brand-gold/5"
                         }
                       `}
                     >
-                      {t}
+                      {TESTAMENT_SHORT[t]}
                     </button>
                   );
                 })}
@@ -196,7 +203,7 @@ export default function BookSelector({
               {/* Book Grid */}
               <div className="p-3 overflow-y-auto max-h-[55vh]">
                 <p className="text-brand-cream/30 text-xs mb-2 px-1">
-                  {TESTAMENT_LABELS[activeTestament]}
+                  {booksByTestament[activeTestament].length} books
                 </p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {booksByTestament[activeTestament].map((book) => (
