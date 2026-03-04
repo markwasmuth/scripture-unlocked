@@ -29,6 +29,42 @@ const COMMENTARY_LEVELS: {
 ];
 
 /**
+ * Clean attribution/boilerplate text from The Season study content.
+ * Removes: "This Bible Study is written by Roger Christopherson..." headers,
+ * URL references, copyright footers, and navigation links.
+ */
+function cleanTheSeasonText(text: string): string {
+  if (!text) return text;
+  let t = text;
+
+  // Remove attribution header (appears at start of introductions)
+  t = t.replace(/This Bible Study is written by Roger Christopherson[^.]*\.\s*/gi, '');
+  t = t.replace(/and it[''']?s transcription\s*\/?\s*location is provided by[^\s]*\s*/gi, '');
+  t = t.replace(/http[s]?:\/\/www\.theseason\.org[^\s]*\s*/gi, '');
+  t = t.replace(/http[s]?:\/\/[^\s]+\s*/gi, '');
+
+  // Remove copyright footer
+  t = t.replace(/PLEASE NOTE:[^]*?written consent\./gi, '');
+  t = t.replace(/©\s*\d{4}[^.]*theseason[^.]*\.\s*/gi, '');
+  t = t.replace(/Webmaster\s*/gi, '');
+
+  // Remove chapter navigation links
+  t = t.replace(/Last Chapter[^]*?Next Chapter[^\n]*/gi, '');
+  t = t.replace(/Old Testament[^]*?Return to all Books[^\n]*/gi, '');
+  t = t.replace(/New Testament[^]*?Home[^\n]*/gi, '');
+  t = t.replace(/Plough[^]*?Seeds[^]*?Vine[^\n]*/gi, '');
+
+  // Remove "end Companion Bible excerpt" markers
+  t = t.replace(/end Companion Bible excerpt\s*/gi, '');
+  t = t.replace(/Excerpt from The Companion Bible[^:]*:\s*/gi, '');
+
+  // Clean up extra whitespace
+  t = t.replace(/\n{3,}/g, '\n\n').trim();
+
+  return t;
+}
+
+/**
  * Strip the leading verse-text quote that The Season commentary always starts with.
  * Pattern: "Verse text here." followed by the actual commentary.
  * We remove everything up to and including the first closing quote/period pair.
@@ -447,12 +483,15 @@ export default function StudyReader({
       </header>
 
       {/* ── Chapter Introduction Card ── */}
-      {study?.introduction && (
-        <div className="chapter-intro-card mb-4">
-          <div className="chapter-intro-label">Chapter Overview</div>
-          <p className="chapter-intro-text">{study.introduction.substring(0, 400)}{study.introduction.length > 400 ? '…' : ''}</p>
-        </div>
-      )}
+      {study?.introduction && (() => {
+        const cleanIntro = cleanTheSeasonText(study.introduction);
+        return cleanIntro.length > 0 ? (
+          <div className="chapter-intro-card mb-4">
+            <div className="chapter-intro-label">Chapter Overview</div>
+            <p className="chapter-intro-text">{cleanIntro.substring(0, 500)}{cleanIntro.length > 500 ? '…' : ''}</p>
+          </div>
+        ) : null;
+      })()}
 
       {/* ── Commentary Depth Tabs ── */}
       <div className="flex items-center gap-3 mb-4 px-1">
@@ -482,9 +521,9 @@ export default function StudyReader({
             strongsRefs.length > 0 ||
             crossRefs.length > 0;
 
-          // Strip leading verse-text quote from The Season commentary, then truncate
+          // Clean attribution boilerplate, then strip leading verse-text quote
           const cleanedCommentary = verse.commentary
-            ? stripLeadingVerseQuote(verse.commentary, verse.verse_text)
+            ? stripLeadingVerseQuote(cleanTheSeasonText(verse.commentary), verse.verse_text)
             : null;
           const commentaryData = cleanedCommentary
             ? truncateCommentary(
