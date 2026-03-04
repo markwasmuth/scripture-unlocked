@@ -29,9 +29,46 @@ const COMMENTARY_LEVELS: {
 ];
 
 /**
+ * Strip the leading verse-text quote that The Season commentary always starts with.
+ * Pattern: "Verse text here." followed by the actual commentary.
+ * We remove everything up to and including the first closing quote/period pair.
+ */
+function stripLeadingVerseQuote(commentary: string, verseText: string): string {
+  if (!commentary) return commentary;
+
+  // Try exact match: starts with opening quote + verse text
+  const stripped = commentary.trim();
+
+  // Pattern 1: starts with opening quote — find the closing quote and take what follows
+  // e.g. "In the beginning God created..." There are two bodies mentioned...
+  if (/^["\u201c]/.test(stripped)) {
+    const closeIdx = stripped.search(/["\u201d](?!\s*["\u201d])/);
+    if (closeIdx > 5 && closeIdx < stripped.length - 50) {
+      const afterQuote = stripped.slice(closeIdx + 1).replace(/^[.\s]+/, '').trim();
+      if (afterQuote.length > 50) return afterQuote;
+    }
+  }
+
+  // Pattern 2: starts with the verse text verbatim (with or without quotes)
+  const clean = verseText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const versePattern = new RegExp(`^["\u201c]?${clean}["\u201d]?\\s*`, 'i');
+  const result = stripped.replace(versePattern, '').trim();
+  if (result.length > 50 && result.length < stripped.length) return result;
+
+  // Pattern 3: if commentary starts with a quoted sentence (any text in quotes at start)
+  const quoteBlock = stripped.match(/^[""\u201c][^"\u201d]{10,200}["\u201d]\s*/);
+  if (quoteBlock) {
+    const afterBlock = stripped.slice(quoteBlock[0].length).trim();
+    if (afterBlock.length > 50) return afterBlock;
+  }
+
+  return stripped;
+}
+
+/**
  * Truncate commentary based on the selected depth level.
- * Light  → first 1-2 sentences
- * Medium → first paragraph (or ~150 words)
+ * Light  → first sentence
+ * Medium → first 3 sentences (~60 words)
  * In-Depth → full text (no truncation)
  */
 function truncateCommentary(
@@ -455,11 +492,13 @@ export default function StudyReader({
             strongsRefs.length > 0 ||
             crossRefs.length > 0;
 
-          // Apply commentary truncation
-          // When a verse is playing, show full commentary (user hears full text)
-          const commentaryData = verse.commentary
+          // Strip leading verse-text quote from The Season commentary, then truncate
+          const cleanedCommentary = verse.commentary
+            ? stripLeadingVerseQuote(verse.commentary, verse.verse_text)
+            : null;
+          const commentaryData = cleanedCommentary
             ? truncateCommentary(
-                verse.commentary,
+                cleanedCommentary,
                 isPlaying ? "in-depth" : commentaryLevel
               )
             : null;
