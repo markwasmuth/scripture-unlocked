@@ -103,10 +103,8 @@ export default function BookSelector({
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg
-                   bg-brand-navy border border-brand-gold/30
-                   hover:border-brand-gold/60 transition-colors
-                   text-brand-cream font-body text-sm sm:text-base"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg font-body text-sm sm:text-base transition-colors"
+        style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--bg-border)", color: "var(--text-primary)" }}
       >
         <span className="text-brand-gold">📖</span>
         <span>{displayText}</span>
@@ -118,9 +116,8 @@ export default function BookSelector({
       {/* Dropdown Panel */}
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-2 w-[340px] sm:w-[400px] max-h-[70vh]
-                     bg-brand-navy border border-brand-gold/20 rounded-xl shadow-2xl
-                     overflow-hidden z-50"
+          className="absolute top-full left-0 mt-2 w-[340px] sm:w-[400px] max-h-[70vh] rounded-xl shadow-2xl overflow-hidden z-50"
+          style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--bg-border)" }}
         >
           {loading ? (
             <div className="p-8 text-center text-brand-cream/60">
@@ -177,50 +174,61 @@ export default function BookSelector({
           ) : (
             /* ── Book List ── */
             <div>
-              {/* Testament Tabs */}
-              <div className="flex border-b border-brand-gold/10 overflow-x-auto">
-                {TESTAMENT_ORDER.map((t) => {
-                  if (booksByTestament[t].length === 0) return null;
-                  return (
+              {/* Testament Selector — prominent two-row layout */}
+              <div className="p-3 pb-0">
+                <div className="grid grid-cols-2 gap-2 mb-1">
+                  {TESTAMENT_ORDER.slice(0, 2).map((t) => (
                     <button
                       key={t}
                       onClick={() => setActiveTestament(t)}
-                      className={`
-                        flex-1 min-w-fit px-3 py-3 text-xs font-display transition-colors whitespace-nowrap
-                        ${
-                          activeTestament === t
-                            ? "text-brand-gold border-b-2 border-brand-gold bg-brand-gold/5"
-                            : "text-brand-cream/50 hover:text-brand-cream/80 hover:bg-brand-gold/5"
-                        }
-                      `}
+                      className="py-3 px-2 rounded-lg text-sm font-display font-semibold transition-all"
+                      style={activeTestament === t
+                        ? { backgroundColor: "var(--gold)", color: "#fff" }
+                        : { backgroundColor: "var(--bg-elevated,#23272F)", color: "var(--text-muted,#8892A4)", border: "1px solid var(--bg-border,#353B4A)" }
+                      }
                     >
-                      {TESTAMENT_SHORT[t]}
+                      {t === "OT" ? "📜 Old Testament" : "✝️ New Testament"}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {TESTAMENT_ORDER.slice(2).map((t) => {
+                    if (booksByTestament[t].length === 0) return null;
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setActiveTestament(t)}
+                        className="py-1.5 px-2 rounded-lg text-xs font-display transition-all"
+                        style={activeTestament === t
+                          ? { backgroundColor: "var(--gold)", color: "#fff" }
+                          : { backgroundColor: "var(--bg-elevated,#23272F)", color: "var(--text-muted,#8892A4)", border: "1px solid var(--bg-border,#353B4A)" }
+                        }
+                      >
+                        {TESTAMENT_SHORT[t]}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Book Grid */}
-              <div className="p-3 overflow-y-auto max-h-[55vh]">
-                <p className="text-brand-cream/30 text-xs mb-2 px-1">
-                  {booksByTestament[activeTestament].length} books
+              <div className="px-3 pb-3 overflow-y-auto max-h-[50vh]">
+                <p className="text-xs mb-2 px-1" style={{ color: "var(--text-muted)" }}>
+                  {TESTAMENT_LABELS[activeTestament]} — {booksByTestament[activeTestament].length} books
                 </p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {booksByTestament[activeTestament].map((book) => (
                     <button
                       key={book.id}
                       onClick={() => handleBookClick(book)}
-                      className={`
-                        text-left px-3 py-2 rounded-lg text-sm transition-all
-                        ${
-                          currentBook === book.name
-                            ? "bg-brand-gold/20 text-brand-gold"
-                            : "text-brand-cream/70 hover:bg-brand-gold/10 hover:text-brand-cream"
-                        }
-                      `}
+                      className="text-left px-3 py-2 rounded-lg text-sm transition-all"
+                      style={currentBook === book.name
+                        ? { backgroundColor: "var(--verse-active)", color: "var(--gold)" }
+                        : { color: "var(--text-secondary)" }
+                      }
                     >
                       <span className="block truncate">{book.name}</span>
-                      <span className="text-[10px] opacity-40">
+                      <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                         {book.total_chapters} ch
                       </span>
                     </button>
