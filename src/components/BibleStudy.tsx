@@ -49,6 +49,7 @@ export default function BibleStudy() {
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
   const [selectedBookName, setSelectedBookName] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
+  const [selectedBookTotalChapters, setSelectedBookTotalChapters] = useState<number | null>(null);
   const [mode, setMode] = useState<InteractionMode>("text");
   const [activeStrongsRef, setActiveStrongsRef] = useState<string | null>(null);
   const [activeVerse, setActiveVerse] = useState<VerseRow | null>(null);
@@ -75,10 +76,11 @@ export default function BibleStudy() {
   // ── Handlers ──
 
   const handleBookSelect = useCallback(
-    (bookId: number, bookName: string, chapter: number) => {
+    (bookId: number, bookName: string, chapter: number, totalChapters: number) => {
       setSelectedBookId(bookId);
       setSelectedBookName(bookName);
       setSelectedChapter(chapter);
+      setSelectedBookTotalChapters(totalChapters);
       // Switch to text mode when selecting a new book/chapter
       if (mode === "talk") setMode("text");
       setActiveVerse(null);
@@ -86,6 +88,27 @@ export default function BibleStudy() {
     },
     [mode]
   );
+
+  // ── Prev/Next Chapter Navigation ──
+  const handlePrevChapter = useCallback(() => {
+    if (!selectedBookId || !selectedBookName || !selectedChapter || !selectedBookTotalChapters) return;
+    if (selectedChapter <= 1) return;
+    const newChapter = selectedChapter - 1;
+    setSelectedChapter(newChapter);
+    setActiveVerse(null);
+    setPlayingVerseNumber(null);
+    if (mode === "talk") setMode("text");
+  }, [selectedBookId, selectedBookName, selectedChapter, selectedBookTotalChapters, mode]);
+
+  const handleNextChapter = useCallback(() => {
+    if (!selectedBookId || !selectedBookName || !selectedChapter || !selectedBookTotalChapters) return;
+    if (selectedChapter >= selectedBookTotalChapters) return;
+    const newChapter = selectedChapter + 1;
+    setSelectedChapter(newChapter);
+    setActiveVerse(null);
+    setPlayingVerseNumber(null);
+    if (mode === "talk") setMode("text");
+  }, [selectedBookId, selectedBookName, selectedChapter, selectedBookTotalChapters, mode]);
 
   const handleModeChange = useCallback((newMode: InteractionMode) => {
     // If leaving listen mode, stop any playing audio
@@ -332,6 +355,44 @@ export default function BibleStudy() {
           </button>
         ))}
       </div>
+
+      {/* ═══ Chapter Navigation Bar ═══ */}
+      {selectedBookName && selectedChapter && selectedBookTotalChapters && (
+        <div
+          className="flex items-center justify-between px-4 py-2"
+          style={{ borderBottom: '1px solid var(--bg-border)', background: 'var(--bg-primary)' }}
+        >
+          <button
+            onClick={handlePrevChapter}
+            disabled={selectedChapter <= 1}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-125"
+            style={{
+              background: selectedChapter <= 1 ? 'transparent' : `${voice.accent}15`,
+              color: voice.accent,
+              border: `1px solid ${selectedChapter <= 1 ? 'transparent' : voice.accent + '30'}`,
+            }}
+          >
+            ← Prev
+          </button>
+
+          <span className="font-cinzel text-sm tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+            {selectedBookName} {selectedChapter} <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>/ {selectedBookTotalChapters}</span>
+          </span>
+
+          <button
+            onClick={handleNextChapter}
+            disabled={selectedChapter >= selectedBookTotalChapters}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-125"
+            style={{
+              background: selectedChapter >= selectedBookTotalChapters ? 'transparent' : `${voice.accent}15`,
+              color: voice.accent,
+              border: `1px solid ${selectedChapter >= selectedBookTotalChapters ? 'transparent' : voice.accent + '30'}`,
+            }}
+          >
+            Next →
+          </button>
+        </div>
+      )}
 
       {/* ═══ Main Content ═══ */}
       <main className="pb-24">

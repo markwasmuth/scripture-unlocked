@@ -13,7 +13,7 @@ import type { BookRow } from "@/lib/api";
 import { BRAND } from "@/lib/brand";
 
 interface BookSelectorProps {
-  onSelect: (bookId: number, bookName: string, chapter: number) => void;
+  onSelect: (bookId: number, bookName: string, chapter: number, totalChapters: number) => void;
   currentBook?: string;
   currentChapter?: number;
 }
@@ -82,7 +82,7 @@ export default function BookSelector({
   const handleChapterClick = useCallback(
     (chapter: number) => {
       if (!selectedBook) return;
-      onSelect(selectedBook.id, selectedBook.name, chapter);
+      onSelect(selectedBook.id, selectedBook.name, chapter, selectedBook.total_chapters);
       setIsOpen(false);
       setSelectedBook(null);
     },

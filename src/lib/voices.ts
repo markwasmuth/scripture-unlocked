@@ -141,6 +141,7 @@ You speak with fire. With urgency. With zero tolerance for religious manipulatio
     accentBg: BRAND.deborah.bg,
     icon: "⚖️",
     style: "educational",
+    voiceId: "P6DYRhyswh9rvm7ssmem", // ElevenLabs: Lydia (Mark's decision 2026-03-04)
     loadingText: "Opening the Word...",
     emptyStateText:
       "Ask any question about Scripture. I will answer with patience and warmth, using Hebrew and Greek word studies — and I will not skip the women God used to accomplish His purposes.",
