@@ -31,6 +31,7 @@ export default function ChatPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -148,18 +149,34 @@ export default function ChatPanel({
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.lang = "en-US";
     recognitionRef.current = recognition;
 
-    recognition.onstart = () => setIsListening(true);
+    recognition.onstart = () => {
+      setIsListening(true);
+      setInterimTranscript("");
+    };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript;
-      setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
-      // Auto-resize textarea
-      if (inputRef.current) {
+      let interim = "";
+      let final = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += t;
+        } else {
+          interim += t;
+        }
+      }
+      // Show live interim text so user can see what's being heard
+      setInterimTranscript(interim);
+      // Commit final text to input
+      if (final) {
+        setInput((prev) => (prev ? `${prev} ${final}` : final));
+        setInterimTranscript("");
+        // Auto-resize textarea
         setTimeout(() => {
           if (inputRef.current) {
             inputRef.current.style.height = "auto";
@@ -175,9 +192,13 @@ export default function ChatPanel({
         setError("Couldn't hear you. Tap the mic and try again.");
       }
       setIsListening(false);
+      setInterimTranscript("");
     };
 
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      setIsListening(false);
+      setInterimTranscript("");
+    };
 
     recognition.start();
   }, [isListening]);
@@ -331,6 +352,49 @@ export default function ChatPanel({
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* ── Listening Status Banner ── */}
+      {isListening && (
+        <div
+          className="mx-4 mb-2 rounded-xl px-4 py-3 flex flex-col gap-1.5"
+          style={{
+            backgroundColor: `${accentColor}12`,
+            border: `1px solid ${accentColor}35`,
+          }}
+        >
+          {/* Status row */}
+          <div className="flex items-center gap-2">
+            {/* Pulsing mic dot */}
+            <span
+              className="w-2.5 h-2.5 rounded-full animate-pulse flex-shrink-0"
+              style={{ backgroundColor: "#ef4444" }}
+            />
+            <span
+              className="text-xs font-display uppercase tracking-widest"
+              style={{ color: accentColor }}
+            >
+              Listening…
+            </span>
+            <button
+              onClick={toggleListening}
+              className="ml-auto text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md"
+              style={{
+                color: `${accentColor}80`,
+                border: `1px solid ${accentColor}30`,
+              }}
+            >
+              Done
+            </button>
+          </div>
+          {/* Live transcript */}
+          <p
+            className="text-sm font-body min-h-[20px] italic leading-snug"
+            style={{ color: interimTranscript ? `${accentColor}CC` : `${accentColor}40` }}
+          >
+            {interimTranscript || "Speak now — I'm hearing you…"}
+          </p>
+        </div>
+      )}
 
       {/* ── Input Area ── */}
       <div className="border-t border-brand-gold/10 px-4 py-3">
