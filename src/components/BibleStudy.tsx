@@ -558,6 +558,7 @@ export default function BibleStudy() {
       {/* ═══ Audio Player (floating bar) ═══ */}
       <AudioPlayer
         accentColor={voice.accent}
+        voiceId={voice.voiceId}
         onEnd={mode === "listen" ? handleAudioEnd : undefined}
         onStop={handleAudioStop}
         onProgress={mode === "listen" ? handleAudioProgress : undefined}

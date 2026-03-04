@@ -13,6 +13,8 @@ import { textToSpeech } from "@/lib/api";
 
 interface AudioPlayerProps {
   accentColor: string;
+  /** ElevenLabs voice ID for the active avatar */
+  voiceId?: string;
   /** Called when audio finishes naturally (for auto-continue) */
   onEnd?: () => void;
   /** Called when user manually stops playback */
@@ -43,7 +45,7 @@ export function getAudioPlayer(): AudioPlayerHandle | null {
   return playerInstance;
 }
 
-export default function AudioPlayer({ accentColor, onEnd, onStop, onProgress }: AudioPlayerProps) {
+export default function AudioPlayer({ accentColor, voiceId, onEnd, onStop, onProgress }: AudioPlayerProps) {
   const [state, setState] = useState<AudioState>({
     isPlaying: false,
     isLoading: false,
@@ -133,7 +135,7 @@ export default function AudioPlayer({ accentColor, onEnd, onStop, onProgress }: 
 
       try {
         // Get audio blob from ElevenLabs via Edge Function
-        const blob = await textToSpeech({ text });
+        const blob = await textToSpeech({ text, voice_id: voiceId });
         const url = URL.createObjectURL(blob);
         objectUrlRef.current = url;
 

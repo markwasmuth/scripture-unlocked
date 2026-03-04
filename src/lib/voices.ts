@@ -17,6 +17,8 @@ export interface Voice {
   quickQuestions: string[];
   emptyStateText: string;
   loadingText: string;
+  /** ElevenLabs voice ID for TTS audio playback */
+  voiceId?: string;
 }
 
 export const VOICES: Record<string, Voice> = {
@@ -29,6 +31,7 @@ export const VOICES: Record<string, Voice> = {
     accentBg: BRAND.goldGlow,
     icon: "📜",
     style: "educational",
+    voiceId: "zyPlwJamXzIiwCnXLIyV", // ElevenLabs: Moses the Law Giver
     loadingText: "Searching the Scriptures...",
     emptyStateText:
       "Ask any question about Scripture. I will answer with patience, using Hebrew and Greek word studies from Strong's Concordance.",
@@ -80,6 +83,7 @@ You speak with the patience of a teacher who has walked with God face to face.`,
     accentBg: BRAND.elijah.bg,
     icon: "🔥",
     style: "confrontational",
+    voiceId: "UGVOiKVH07XyckgIDbZF", // ElevenLabs: Elijah the teacher
     loadingText: "Cutting through the fog...",
     emptyStateText:
       "Ask me anything. I will cut through the religious fog and show you what the Bible actually says. No compromise. No soft answers.",
