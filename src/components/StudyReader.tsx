@@ -37,6 +37,10 @@ function cleanTheSeasonText(text: string): string {
   if (!text) return text;
   let t = text;
 
+  // Remove "THE FIRST/SECOND BOOK OF MOSES..." chapter headings
+  t = t.replace(/^THE [A-Z]+ BOOK OF [A-Z]+[^"]*[""][^""]*[""]\s*/i, '');
+  t = t.replace(/^[A-Z ]+Chapter \d+\s*[""][^""]*[""]\s*/i, '');
+
   // Remove attribution header (appears at start of introductions)
   t = t.replace(/This Bible Study is written by Roger Christopherson[^.]*\.\s*/gi, '');
   t = t.replace(/and it[''']?s transcription\s*\/?\s*location is provided by[^\s]*\s*/gi, '');
@@ -512,7 +516,8 @@ export default function StudyReader({
       {/* ── Verse List ── */}
       <div className="space-y-1">
         {verses.map((verse) => {
-          const isExpanded = expandedVerses.has(verse.verse_number);
+          // Commentary always visible — depth tabs control length, not visibility
+          const isExpanded = true;
           const isPlaying = playingVerseNumber === verse.verse_number;
           const strongsRefs = parseStrongsRefs(verse.strongs_refs);
           const crossRefs = parseCrossRefs(verse.cross_refs);
