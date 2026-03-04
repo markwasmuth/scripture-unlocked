@@ -116,7 +116,7 @@ export default function BookSelector({
       {/* Dropdown Panel */}
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-2 w-[340px] sm:w-[400px] max-h-[70vh] rounded-xl shadow-2xl overflow-hidden z-50"
+          className="absolute top-full left-0 mt-2 w-[340px] sm:w-[400px] max-h-[70vh] rounded-xl shadow-2xl overflow-hidden z-[200]"
           style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--bg-border)" }}
         >
           {loading ? (
