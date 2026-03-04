@@ -350,26 +350,20 @@ export default function StudyReader({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <div
-          className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
-          style={{
-            borderColor: `${accentColor}40`,
-            borderTopColor: "transparent",
-          }}
-        />
-        <p className="text-brand-cream/50 text-sm font-body">
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: 'var(--gold)', borderTopColor: 'transparent' }} />
+        <p className="font-lora text-sm" style={{ color: 'var(--text-muted)' }}>
           Loading {bookName} {chapter}...
         </p>
       </div>
     );
   }
 
-  // ── Error State ──
   if (error) {
     return (
       <div className="text-center py-16 px-4">
-        <p className="text-red-400/80 text-sm font-body">{error}</p>
-        <p className="text-brand-cream/30 text-xs mt-2">
+        <p className="text-sm" style={{ color: '#dc2626' }}>{error}</p>
+        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
           This chapter may not have study content yet.
         </p>
       </div>
@@ -406,53 +400,42 @@ export default function StudyReader({
       )}
 
       {/* ── Chapter Header ── */}
-      <header className="text-center mb-4">
-        <h2
-          className="font-display text-xl sm:text-2xl tracking-wide"
-          style={{ color: accentColor }}
-        >
-          {bookName} {chapter}
-        </h2>
-        {study?.title && (
-          <p className="text-brand-cream/60 font-body text-sm mt-1 italic">
-            {study.title}
-          </p>
-        )}
-        {study?.introduction && (
-          <p className="text-brand-cream/50 font-body text-xs mt-3 max-w-lg mx-auto leading-relaxed">
-            {study.introduction}
-          </p>
-        )}
+      <header className="mb-2">
+        <div className="flex items-center justify-between">
+          <h2 className="font-cinzel font-semibold text-xl sm:text-2xl tracking-wide" style={{ color: 'var(--gold-bright)' }}>
+            {bookName} {chapter}
+          </h2>
+        </div>
+        {/* Ornamental divider */}
+        <div className="ornament my-3">
+          <div className="ornament-line" />
+          ✦
+          <div className="ornament-line" />
+        </div>
       </header>
 
-      {/* ── Commentary Level Toggle ── */}
-      <div className="flex items-center justify-center gap-1 mb-4">
-        <span className="text-brand-cream/30 text-[10px] uppercase tracking-wider mr-2 font-display">
-          Commentary:
-        </span>
-        {COMMENTARY_LEVELS.map((level) => (
-          <button
-            key={level.id}
-            onClick={() => setCommentaryLevel(level.id)}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-body transition-all ${
-              commentaryLevel === level.id
-                ? "shadow-sm"
-                : "text-brand-cream/40 hover:text-brand-cream/60"
-            }`}
-            style={
-              commentaryLevel === level.id
-                ? {
-                    backgroundColor: `${accentColor}20`,
-                    color: accentColor,
-                    border: `1px solid ${accentColor}40`,
-                  }
-                : { border: "1px solid transparent" }
-            }
-          >
-            <span className="mr-1">{level.icon}</span>
-            {level.label}
-          </button>
-        ))}
+      {/* ── Chapter Introduction Card ── */}
+      {study?.introduction && (
+        <div className="chapter-intro-card mb-4">
+          <div className="chapter-intro-label">Chapter Overview</div>
+          <p className="chapter-intro-text">{study.introduction.substring(0, 400)}{study.introduction.length > 400 ? '…' : ''}</p>
+        </div>
+      )}
+
+      {/* ── Commentary Depth Tabs ── */}
+      <div className="flex items-center gap-3 mb-4 px-1">
+        <span className="font-inter text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Depth:</span>
+        <div className="depth-tabs">
+          {COMMENTARY_LEVELS.map((level) => (
+            <button
+              key={level.id}
+              onClick={() => setCommentaryLevel(level.id)}
+              className={`depth-tab${commentaryLevel === level.id ? ' active' : ''}`}
+            >
+              {level.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Verse List ── */}
@@ -513,26 +496,13 @@ export default function StudyReader({
                 if (el) verseRefs.current.set(verse.verse_number, el);
               }}
               onClick={() => handleVerseClick(verse)}
-              className={`
-                rounded-lg transition-all duration-200 cursor-pointer
-                border-l-2 px-4 py-3
-                ${
-                  isPlaying
-                    ? "bg-brand-cream/[0.05]"
-                    : isExpanded
-                    ? "bg-brand-cream/[0.03]"
-                    : "hover:bg-brand-cream/[0.02]"
-                }
-              `}
+              className={`verse-container${isPlaying ? ' active' : isExpanded ? ' active' : ''}`}
               style={{
                 borderLeftColor: isPlaying
-                  ? accentColor
+                  ? 'var(--gold)'
                   : isExpanded
-                  ? `${accentColor}80`
-                  : "transparent",
-                boxShadow: isPlaying
-                  ? `0 0 15px ${accentColor}15, inset 0 0 15px ${accentColor}08`
-                  : "none",
+                  ? 'rgba(212,168,67,0.5)'
+                  : 'transparent',
               }}
               role="button"
               tabIndex={0}
@@ -541,15 +511,9 @@ export default function StudyReader({
             >
               {/* ── Verse Text Row ── */}
               <div className="flex items-start gap-2">
-                <p
-                  className={`font-body text-sm sm:text-base leading-relaxed flex-1 transition-colors duration-300 ${
-                    isPlaying ? "text-brand-cream" : "text-brand-cream/90"
-                  }`}
-                >
-                  <span
-                    className="font-display text-xs mr-1.5 align-super"
-                    style={{ color: accentColor }}
-                  >
+                <p className="font-lora text-base sm:text-[17px] leading-[1.8] flex-1 transition-colors duration-300"
+                   style={{ color: 'var(--text-primary)' }}>
+                  <span className="font-cinzel font-bold text-[12px] mr-1.5 align-super" style={{ color: 'var(--gold)' }}>
                     {verse.verse_number}
                   </span>
                   {isPlaying && audioProgress ? (
@@ -670,20 +634,14 @@ export default function StudyReader({
                   {/* Strong's References */}
                   {strongsRefs.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      <span className="text-brand-cream/30 text-[10px] uppercase tracking-wider mr-1 self-center">
+                      <span className="font-inter text-[10px] uppercase tracking-wider mr-1 self-center" style={{ color: 'var(--text-muted)' }}>
                         Strong&apos;s:
                       </span>
                       {strongsRefs.map((ref) => (
                         <button
                           key={ref}
                           onClick={(e) => handleStrongsClick(ref, e)}
-                          className="px-2 py-0.5 rounded text-[11px] font-body
-                                     transition-colors hover:brightness-125"
-                          style={{
-                            backgroundColor: `${accentColor}15`,
-                            color: accentColor,
-                            border: `1px solid ${accentColor}30`,
-                          }}
+                          className="explain-pill"
                         >
                           {ref}
                         </button>
@@ -694,16 +652,12 @@ export default function StudyReader({
                   {/* Cross-References */}
                   {crossRefs.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      <span className="text-brand-cream/30 text-[10px] uppercase tracking-wider mr-1 self-center">
+                      <span className="font-inter text-[10px] uppercase tracking-wider mr-1 self-center" style={{ color: 'var(--text-muted)' }}>
                         See also:
                       </span>
                       {crossRefs.map((ref, i) => (
-                        <span
-                          key={i}
-                          className="text-brand-cream/50 text-xs font-body italic"
-                        >
-                          {ref}
-                          {i < crossRefs.length - 1 && ","}
+                        <span key={i} className="font-lora text-xs italic" style={{ color: 'var(--text-secondary)' }}>
+                          {ref}{i < crossRefs.length - 1 && ","}
                         </span>
                       ))}
                     </div>
@@ -715,17 +669,15 @@ export default function StudyReader({
         })}
       </div>
 
-      {/* ── Chapter Navigation ── */}
-      <div className="flex justify-between items-center mt-8 pt-4 border-t border-brand-gold/10">
-        <p className="text-brand-cream/30 text-xs font-body">
+      {/* ── Chapter Footer ── */}
+      <div className="flex justify-between items-center mt-8 pt-4" style={{ borderTop: '1px solid var(--bg-border)' }}>
+        <p className="font-inter text-[11px]" style={{ color: 'var(--text-muted)' }}>
           {verses.length} verses
         </p>
-        <p
-          className="text-xs font-body italic"
-          style={{ color: `${accentColor}60` }}
-        >
-          {bookName} {chapter}
-        </p>
+        <div className="ornament flex-none" style={{ fontSize: '11px' }}>
+          <span style={{ color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif' }}>{bookName} {chapter}</span>
+          <span style={{ color: 'var(--gold)' }}>✦</span>
+        </div>
       </div>
     </div>
   );

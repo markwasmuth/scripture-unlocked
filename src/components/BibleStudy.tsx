@@ -36,6 +36,16 @@ export default function BibleStudy() {
   const [activeVoice, setActiveVoice] = useState<AvatarId>(
     DEFAULT_VOICE as AvatarId
   );
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Sync theme to <html> data-theme attribute
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : '');
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(t => t === 'dark' ? 'light' : 'dark');
+  }, []);
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
   const [selectedBookName, setSelectedBookName] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
@@ -271,23 +281,14 @@ export default function BibleStudy() {
   const showReader = mode === "text" || mode === "listen";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-navy via-[#0d1b3e] to-brand-navy text-white font-body">
-      {/* ═══ Header ═══ */}
-      <header className="text-center pt-8 pb-4 px-4 border-b border-brand-gold/10">
-        <h1 className="font-display text-brand-gold text-2xl sm:text-3xl tracking-[0.15em] uppercase">
-          {BRAND_META.name}
-        </h1>
-        <p className="text-brand-gold/50 text-xs sm:text-sm mt-1 font-body">
-          {BRAND_META.tagline}
-        </p>
-      </header>
+    <div className="min-h-screen font-lora" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
 
-      {/* ═══ Navigation Bar ═══ */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-brand-gold/10 gap-2">
-        {/* Left: Voice Dropdown + Book Selector */}
-        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+      {/* ═══ Header ═══ */}
+      <header style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--bg-border)' }}
+              className="px-4 py-3 flex items-center justify-between">
+        {/* Left: Voice + Book selectors */}
+        <div className="flex items-center gap-2 min-w-0">
           <VoiceSelector selected={activeVoice} onSelect={setActiveVoice} />
-          <span className="text-brand-gold/20 text-sm hidden sm:inline">│</span>
           <BookSelector
             onSelect={handleBookSelect}
             currentBook={selectedBookName ?? undefined}
@@ -295,29 +296,41 @@ export default function BibleStudy() {
           />
         </div>
 
-        {/* Right: Mode Toggle (Text / Listen / Talk) */}
-        <div className="flex bg-brand-cream/5 rounded-lg p-0.5 shrink-0">
-          {MODE_CONFIG.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => handleModeChange(m.id)}
-              className={`px-2 sm:px-3 py-1.5 rounded-md text-xs font-display uppercase tracking-wider transition-all ${
-                mode === m.id
-                  ? "text-brand-navy shadow-sm"
-                  : "text-brand-cream/50 hover:text-brand-cream/70"
-              }`}
-              style={
-                mode === m.id
-                  ? { backgroundColor: voice.accent, color: BRAND.navy }
-                  : undefined
-              }
-              aria-pressed={mode === m.id}
-            >
-              <span className="mr-1">{m.icon}</span>
-              <span className="hidden sm:inline">{m.label}</span>
-            </button>
-          ))}
+        {/* Center: Logo */}
+        <div className="absolute left-1/2 -translate-x-1/2 text-center hidden sm:block">
+          <div className="font-cinzel font-bold tracking-[0.12em] text-sm" style={{ color: 'var(--gold-bright)' }}>
+            SCRIPTURE UNLOCKED
+          </div>
+          <div className="font-lora italic text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            {BRAND_META.tagline}
+          </div>
         </div>
+
+        {/* Right: Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110 shrink-0"
+          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--bg-border)', color: 'var(--gold)' }}
+          aria-label="Toggle theme"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+      </header>
+
+      {/* ═══ Mode Bar (sticky) ═══ */}
+      <div className="mode-bar">
+        {MODE_CONFIG.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => handleModeChange(m.id)}
+            className={`mode-tab${mode === m.id ? ' active' : ''}`}
+            aria-pressed={mode === m.id}
+          >
+            <span>{m.icon}</span>
+            <span className="hidden sm:inline">{m.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* ═══ Main Content ═══ */}
@@ -342,15 +355,18 @@ export default function BibleStudy() {
           ) : (
             // ── Welcome / Empty State ──
             <div className="flex flex-col items-center justify-center py-20 px-6 gap-6">
+              {/* Ornamental divider */}
+              <div className="ornament w-48">
+                <div className="ornament-line" />
+                ✦
+                <div className="ornament-line" />
+              </div>
               <span className="text-5xl">{voice.icon}</span>
               <div className="text-center max-w-md">
-                <h2
-                  className="font-display text-lg sm:text-xl mb-2"
-                  style={{ color: voice.accent }}
-                >
+                <h2 className="font-cinzel text-lg sm:text-xl mb-2" style={{ color: 'var(--gold-bright)' }}>
                   Welcome to Scripture Unlocked
                 </h2>
-                <p className="text-brand-cream/50 text-sm font-body leading-relaxed">
+                <p className="font-lora text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                   Select a book and chapter above to begin your verse-by-verse
                   study, or switch to <strong>Talk</strong> mode to ask{" "}
                   {voice.name} a question about Scripture.
@@ -426,14 +442,11 @@ export default function BibleStudy() {
       </main>
 
       {/* ═══ Footer ═══ */}
-      <footer className="text-center py-6 px-4 border-t border-brand-gold/10">
-        <p
-          className="font-body text-xs italic"
-          style={{ color: `${voice.accent}50` }}
-        >
+      <footer className="text-center py-6 px-4" style={{ borderTop: '1px solid var(--bg-border)' }}>
+        <p className="font-lora text-xs italic" style={{ color: 'var(--text-muted)' }}>
           {BRAND_META.closing}
         </p>
-        <p className="text-brand-cream/20 text-[10px] mt-2 font-body">
+        <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
           {BRAND_META.copyright}
         </p>
       </footer>
