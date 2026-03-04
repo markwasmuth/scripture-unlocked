@@ -270,22 +270,21 @@ export default function ChatPanel({
             }`}
           >
             <div
-              className={`
-                max-w-[85%] sm:max-w-[75%] rounded-xl px-4 py-3
-                font-body text-sm leading-relaxed
-                ${
-                  msg.role === "user"
-                    ? "bg-brand-cream/10 text-brand-cream/90 rounded-br-sm"
-                    : "rounded-bl-sm"
-                }
-              `}
+              className={`max-w-[85%] sm:max-w-[75%] rounded-xl px-4 py-3 font-body text-sm leading-relaxed`}
               style={
-                msg.role === "assistant"
+                msg.role === "user"
                   ? {
-                      backgroundColor: `${accentColor}10`,
-                      borderLeft: `2px solid ${accentColor}40`,
+                      backgroundColor: "var(--bg-elevated)",
+                      color: "var(--text-primary)",
+                      border: "1px solid var(--bg-border)",
+                      borderBottomRightRadius: "4px",
                     }
-                  : undefined
+                  : {
+                      backgroundColor: `${accentColor}18`,
+                      borderLeft: `3px solid ${accentColor}`,
+                      borderRadius: "0 12px 12px 4px",
+                      color: "var(--text-primary)",
+                    }
               }
             >
               {msg.role === "assistant" && (
@@ -428,14 +427,14 @@ export default function ChatPanel({
       )}
 
       {/* ── Input Area ── */}
-      <div className="border-t border-brand-gold/10 px-4 py-3">
+      <div className="px-4 py-3" style={{ borderTop: "1px solid var(--bg-border)" }}>
         {/* Clear chat button (when messages exist) */}
         {messages.length > 0 && (
           <div className="flex justify-end mb-2">
             <button
               onClick={clearChat}
-              className="text-brand-cream/30 hover:text-brand-cream/50
-                         text-[10px] uppercase tracking-wider transition-colors"
+              className="text-[10px] uppercase tracking-wider transition-colors"
+              style={{ color: "var(--text-muted)" }}
             >
               Clear conversation
             </button>
@@ -450,11 +449,12 @@ export default function ChatPanel({
             onKeyDown={handleKeyDown}
             placeholder={`Ask ${voice.name} a question...`}
             rows={1}
-            className="flex-1 bg-brand-cream/5 border border-brand-gold/15
-                       rounded-xl px-4 py-2.5 text-sm font-body
-                       text-brand-cream/90 placeholder:text-brand-cream/30
-                       focus:outline-none focus:border-brand-gold/40
-                       resize-none overflow-hidden transition-colors"
+            className="flex-1 rounded-xl px-4 py-2.5 text-sm font-body resize-none overflow-hidden transition-colors focus:outline-none"
+            style={{
+              backgroundColor: "var(--bg-elevated)",
+              border: "1px solid var(--bg-border)",
+              color: "var(--text-primary)",
+            }}
             disabled={isLoading}
           />
 

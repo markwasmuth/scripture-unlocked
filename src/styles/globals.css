@@ -23,20 +23,20 @@
 }
 
 [data-theme='light'] {
-  /* Cloud & Stone (Light) */
+  /* Cloud & Stone (Light) — navy accent */
   --bg-primary:  #F2F2EE;
   --bg-surface:  #E8E8E2;
   --bg-elevated: #DDDDD6;
-  --bg-border:   #C8C8C0;
-  --gold:        #7A6030;
-  --gold-bright: #A0803E;
-  --gold-glow:   rgba(122,96,48,0.12);
+  --bg-border:   #C0C0B8;
+  --gold:        #1B3A6B;
+  --gold-bright: #2952A0;
+  --gold-glow:   rgba(27,58,107,0.10);
   --text-primary:   #1A1A1A;
-  --text-secondary: #3D3D3D;
-  --text-muted:     #707070;
-  --verse-hover:  rgba(122,96,48,0.04);
-  --verse-active: rgba(122,96,48,0.09);
-  --tab-active-bg: rgba(122,96,48,0.07);
+  --text-secondary: #2C2C2C;
+  --text-muted:     #666666;
+  --verse-hover:  rgba(27,58,107,0.04);
+  --verse-active: rgba(27,58,107,0.08);
+  --tab-active-bg: rgba(27,58,107,0.06);
 }
 
 /* ── Base Reset ─────────────────────────────── */
