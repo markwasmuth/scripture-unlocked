@@ -4,6 +4,11 @@
 // Floating mini-bar TTS player. Converts text to speech via
 // ElevenLabs Edge Function, plays audio with simple controls.
 // Single-track: new audio stops the previous track.
+//
+// CHUNKING: ElevenLabs caps requests at ~5000 chars. Long
+// verse+commentary text is split at sentence boundaries into
+// ≤2500-char chunks and played sequentially to prevent the
+// mid-sentence cutoff bug in Listen mode.
 // ═══════════════════════════════════════════════════════════════
 
 "use client";
@@ -28,6 +33,8 @@ interface AudioState {
   isLoading: boolean;
   label: string;
   progress: number;
+  chunkIndex: number;
+  totalChunks: number;
   error: string | null;
 }
 
@@ -45,18 +52,71 @@ export function getAudioPlayer(): AudioPlayerHandle | null {
   return playerInstance;
 }
 
+// ── Text Chunking ────────────────────────────────────────────
+
+const MAX_CHUNK_CHARS = 2400;
+
+/**
+ * Split text into chunks of at most MAX_CHUNK_CHARS characters,
+ * breaking at sentence boundaries (. ! ?) when possible.
+ * This prevents ElevenLabs API truncation on long commentary.
+ */
+function chunkText(text: string): string[] {
+  if (!text || text.trim().length === 0) return [];
+
+  // If short enough, no splitting needed
+  if (text.length <= MAX_CHUNK_CHARS) return [text.trim()];
+
+  const chunks: string[] = [];
+  let remaining = text.trim();
+
+  while (remaining.length > MAX_CHUNK_CHARS) {
+    // Find the last sentence boundary within MAX_CHUNK_CHARS
+    const slice = remaining.slice(0, MAX_CHUNK_CHARS);
+    // Match last sentence-ending punctuation followed by whitespace or end
+    const sentenceEnd = slice.search(/[.!?][^.!?]*$/);
+
+    let cutAt: number;
+    if (sentenceEnd > MAX_CHUNK_CHARS * 0.5) {
+      // Cut after the punctuation mark
+      cutAt = sentenceEnd + 1;
+    } else {
+      // No good sentence break — cut at last whitespace
+      const lastSpace = slice.lastIndexOf(" ");
+      cutAt = lastSpace > MAX_CHUNK_CHARS * 0.5 ? lastSpace : MAX_CHUNK_CHARS;
+    }
+
+    chunks.push(remaining.slice(0, cutAt).trim());
+    remaining = remaining.slice(cutAt).trim();
+  }
+
+  if (remaining.length > 0) chunks.push(remaining);
+
+  return chunks.filter((c) => c.length > 0);
+}
+
+// ── Component ────────────────────────────────────────────────
+
 export default function AudioPlayer({ accentColor, voiceId, onEnd, onStop, onProgress }: AudioPlayerProps) {
   const [state, setState] = useState<AudioState>({
     isPlaying: false,
     isLoading: false,
     label: "",
     progress: 0,
+    chunkIndex: 0,
+    totalChunks: 1,
     error: null,
   });
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const animFrameRef = useRef<number | null>(null);
+
+  // Chunk queue state — stored in refs so async callbacks always see current values
+  const chunksRef = useRef<string[]>([]);
+  const currentChunkRef = useRef<number>(0);
+  const labelRef = useRef<string>("");
+  const stoppedRef = useRef<boolean>(false);
 
   // Keep callback refs fresh without re-creating play/stop
   const onEndRef = useRef(onEnd);
@@ -83,16 +143,22 @@ export default function AudioPlayer({ accentColor, voiceId, onEnd, onStop, onPro
     }
   }, []);
 
-  // Track playback progress
+  // Track playback progress for progress bar
   const trackProgress = useCallback(() => {
     if (!audioRef.current) return;
 
     const audio = audioRef.current;
+    const chunkIdx = currentChunkRef.current;
+    const totalChunks = chunksRef.current.length;
+
     if (audio.duration && audio.duration > 0) {
-      setState((s) => ({
-        ...s,
-        progress: (audio.currentTime / audio.duration) * 100,
-      }));
+      // Overall progress = completed chunks + fraction of current chunk
+      const chunkFraction = audio.currentTime / audio.duration;
+      const overall = totalChunks > 0
+        ? ((chunkIdx + chunkFraction) / totalChunks) * 100
+        : chunkFraction * 100;
+
+      setState((s) => ({ ...s, progress: Math.min(100, overall) }));
     }
 
     if (!audio.paused && !audio.ended) {
@@ -102,12 +168,16 @@ export default function AudioPlayer({ accentColor, voiceId, onEnd, onStop, onPro
 
   // Stop current playback
   const stop = useCallback(() => {
+    stoppedRef.current = true;
+    chunksRef.current = [];
     cleanup();
     setState({
       isPlaying: false,
       isLoading: false,
       label: "",
       progress: 0,
+      chunkIndex: 0,
+      totalChunks: 1,
       error: null,
     });
   }, [cleanup]);
@@ -119,33 +189,59 @@ export default function AudioPlayer({ accentColor, voiceId, onEnd, onStop, onPro
     }
   }, []);
 
-  // Play new text
-  const play = useCallback(
-    async (text: string, label?: string) => {
-      // Stop any current playback
-      cleanup();
+  // Play a single chunk by index
+  const playChunk = useCallback(
+    async (chunkIdx: number) => {
+      if (stoppedRef.current) return;
 
-      setState({
-        isPlaying: false,
+      const chunks = chunksRef.current;
+      if (chunkIdx >= chunks.length) {
+        // All chunks done — fire onEnd
+        setState((s) => ({ ...s, isPlaying: false, progress: 100 }));
+        if (onEndRef.current) {
+          onEndRef.current();
+        } else {
+          setTimeout(() => stop(), 2000);
+        }
+        return;
+      }
+
+      currentChunkRef.current = chunkIdx;
+      const totalChunks = chunks.length;
+      const chunkText = chunks[chunkIdx];
+      const label = labelRef.current;
+
+      setState((s) => ({
+        ...s,
         isLoading: true,
-        label: label || "Loading audio...",
-        progress: 0,
-        error: null,
-      });
+        isPlaying: false,
+        chunkIndex: chunkIdx,
+        totalChunks,
+        label: totalChunks > 1
+          ? `${label} (${chunkIdx + 1}/${totalChunks})`
+          : label || "Loading audio...",
+      }));
 
       try {
-        // Get audio blob from ElevenLabs via Edge Function
-        const blob = await textToSpeech({ text, voice_id: voiceId });
+        // Clean up previous audio
+        cleanup();
+
+        const blob = await textToSpeech({ text: chunkText, voice_id: voiceId });
+
+        // Check if stopped while awaiting
+        if (stoppedRef.current) return;
+
         const url = URL.createObjectURL(blob);
         objectUrlRef.current = url;
 
         const audio = new Audio(url);
         audioRef.current = audio;
 
-        // Set up event listeners
         audio.addEventListener("playing", () => {
-          setState((s) => ({ ...s, isPlaying: true, isLoading: false }));
-          trackProgress();
+          if (!stoppedRef.current) {
+            setState((s) => ({ ...s, isPlaying: true, isLoading: false }));
+            trackProgress();
+          }
         });
 
         audio.addEventListener("pause", () => {
@@ -153,25 +249,14 @@ export default function AudioPlayer({ accentColor, voiceId, onEnd, onStop, onPro
         });
 
         audio.addEventListener("ended", () => {
-          setState((s) => ({
-            ...s,
-            isPlaying: false,
-            progress: 100,
-          }));
-          // If there's an onEnd callback (auto-continue), call it
-          // Otherwise auto-hide after 2s
-          if (onEndRef.current) {
-            onEndRef.current();
-          } else {
-            setTimeout(() => {
-              stop();
-            }, 2000);
-          }
+          if (stoppedRef.current) return;
+          // Advance to next chunk
+          playChunk(chunkIdx + 1);
         });
 
-        // Report playback position for text highlighting (~4x/sec)
+        // Report playback position for text highlighting
         audio.addEventListener("timeupdate", () => {
-          if (audio.duration > 0) {
+          if (audio.duration > 0 && !stoppedRef.current) {
             onProgressRef.current?.({
               currentTime: audio.currentTime,
               duration: audio.duration,
@@ -180,26 +265,68 @@ export default function AudioPlayer({ accentColor, voiceId, onEnd, onStop, onPro
         });
 
         audio.addEventListener("error", () => {
-          setState((s) => ({
-            ...s,
-            isPlaying: false,
-            isLoading: false,
-            error: "Audio playback failed",
-          }));
+          if (!stoppedRef.current) {
+            setState((s) => ({
+              ...s,
+              isPlaying: false,
+              isLoading: false,
+              error: "Audio playback failed",
+            }));
+          }
         });
 
-        setState((s) => ({ ...s, label: label || "Playing..." }));
-        await audio.play();
-      } catch (err) {
-        console.error("TTS error:", err);
         setState((s) => ({
           ...s,
-          isLoading: false,
-          error: "Failed to generate audio. Try again.",
+          label: totalChunks > 1
+            ? `${label} (${chunkIdx + 1}/${totalChunks})`
+            : label || "Playing...",
         }));
+
+        await audio.play();
+      } catch (err) {
+        if (!stoppedRef.current) {
+          console.error("TTS chunk error:", err);
+          setState((s) => ({
+            ...s,
+            isLoading: false,
+            error: "Failed to generate audio. Try again.",
+          }));
+        }
       }
     },
-    [cleanup, stop, trackProgress]
+    [cleanup, stop, trackProgress, voiceId]
+  );
+
+  // Play new text (entry point — splits into chunks then plays from chunk 0)
+  const play = useCallback(
+    async (text: string, label?: string) => {
+      // Signal any in-flight chunk to abort
+      stoppedRef.current = true;
+      cleanup();
+
+      // Build chunk queue
+      const chunks = chunkText(text);
+      if (chunks.length === 0) return;
+
+      chunksRef.current = chunks;
+      currentChunkRef.current = 0;
+      labelRef.current = label || "";
+      stoppedRef.current = false;
+
+      setState({
+        isPlaying: false,
+        isLoading: true,
+        label: label || "Loading audio...",
+        progress: 0,
+        chunkIndex: 0,
+        totalChunks: chunks.length,
+        error: null,
+      });
+
+      // Start playing from first chunk
+      await playChunk(0);
+    },
+    [cleanup, playChunk]
   );
 
   // Toggle play/pause
@@ -219,6 +346,7 @@ export default function AudioPlayer({ accentColor, voiceId, onEnd, onStop, onPro
     playerInstance = { play, stop, pause };
     return () => {
       playerInstance = null;
+      stoppedRef.current = true;
       cleanup();
     };
   }, [play, stop, pause, cleanup]);
@@ -290,6 +418,12 @@ export default function AudioPlayer({ accentColor, voiceId, onEnd, onStop, onPro
                 }}
               />
             </div>
+          )}
+          {/* Chunk indicator for long texts */}
+          {!state.error && state.totalChunks > 1 && (
+            <p className="text-[10px] mt-0.5 font-inter" style={{ color: `${accentColor}70` }}>
+              Part {state.chunkIndex + 1} of {state.totalChunks}
+            </p>
           )}
         </div>
 
