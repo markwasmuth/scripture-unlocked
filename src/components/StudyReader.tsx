@@ -160,23 +160,81 @@ interface StudyReaderProps {
 
 // ── Helpers ──────────────────────────────────────────────────
 
-/** Parse Strong's references from a string like "H430, H1254, G2316" */
-function parseStrongsRefs(refs: string | null): string[] {
+/** Parse Strong's references from either a flat string "H430, H1254"
+ *  or a JSON array of objects [{word, number, definition}] */
+function parseStrongsRefs(refs: string | object | null): string[] {
   if (!refs) return [];
-  return refs
-    .split(/[,;\s]+/)
-    .map((r) => r.trim())
-    .filter((r) => /^[HG]\d+$/i.test(r))
-    .map((r) => r.toUpperCase());
+
+  // If it's already an array (enrichment format)
+  if (Array.isArray(refs)) {
+    return refs
+      .map((r: { number?: string }) => r.number || "")
+      .filter((n: string) => /^[HG]\d+$/i.test(n))
+      .map((n: string) => n.toUpperCase());
+  }
+
+  // If it's a string that looks like JSON, parse it first
+  if (typeof refs === "string" && refs.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(refs);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((r: { number?: string }) => r.number || "")
+          .filter((n: string) => /^[HG]\d+$/i.test(n))
+          .map((n: string) => n.toUpperCase());
+      }
+    } catch { /* fall through to flat string parsing */ }
+  }
+
+  // Flat string format: "H430, H1254, G2316"
+  if (typeof refs === "string") {
+    return refs
+      .split(/[,;\s]+/)
+      .map((r) => r.trim())
+      .filter((r) => /^[HG]\d+$/i.test(r))
+      .map((r) => r.toUpperCase());
+  }
+
+  return [];
 }
 
-/** Parse cross-references from a string like "John 1:1; Hebrews 11:3" */
-function parseCrossRefs(refs: string | null): string[] {
+/** Parse cross-references from a flat string "John 1:1; Hebrews 11:3"
+ *  or a JSON array, or null (cross-refs now live in their own table) */
+function parseCrossRefs(refs: string | object | null): string[] {
   if (!refs) return [];
-  return refs
-    .split(/[;]+/)
-    .map((r) => r.trim())
-    .filter(Boolean);
+
+  // If it's already an array
+  if (Array.isArray(refs)) {
+    return refs
+      .map((r: string | { to_verse?: string; reason?: string }) =>
+        typeof r === "string" ? r : r.to_verse || ""
+      )
+      .filter(Boolean);
+  }
+
+  // If it's a string that looks like JSON
+  if (typeof refs === "string" && refs.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(refs);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((r: string | { to_verse?: string }) =>
+            typeof r === "string" ? r : r.to_verse || ""
+          )
+          .filter(Boolean);
+      }
+    } catch { /* fall through */ }
+  }
+
+  // Flat string format
+  if (typeof refs === "string") {
+    return refs
+      .split(/[;]+/)
+      .map((r) => r.trim())
+      .filter(Boolean);
+  }
+
+  return [];
 }
 
 // ── Sentence Highlighting Helpers ─────────────────────────────

@@ -68,7 +68,10 @@ export interface VerseRow {
   commentary: string | null;
   commentary_tts: string | null;
   cross_refs: string | null;
-  strongs_refs: string | null;
+  strongs_refs: string | object | null;
+  speaker_type: string | null;
+  connects_to_previous: string | null;
+  god_principle: string | null;
 }
 
 export interface StrongsEntry {
