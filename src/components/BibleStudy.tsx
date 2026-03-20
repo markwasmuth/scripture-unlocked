@@ -510,6 +510,9 @@ export default function BibleStudy() {
         <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
           {BRAND_META.copyright}
         </p>
+        <p className="text-[10px] mt-2" style={{ opacity: 0.5 }}>
+          <a href="/sources" style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}>Sources & Acknowledgments</a>
+        </p>
       </footer>
 
       {/* ═══ Strong's Modal (overlays everything) ═══ */}

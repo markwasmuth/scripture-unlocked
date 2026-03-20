@@ -106,7 +106,7 @@ Scripture Unlocked uses three AI teaching avatars. Each has a distinct personali
 - All provide **Strong's Concordance numbers** for Hebrew/Greek word studies
 - All capitalize pronouns for God (He, Him, His)
 - All teach the **BE-DO-HAVE framework**: BE (identity) → DO (action) → HAVE (results)
-- All reference: TheSeason.org, Companion Bible, Smith's Bible Dictionary, Webster's 1828 Dictionary
+- All reference: Strong's Concordance, Companion Bible, Green's Interlinear, Smith's Bible Dictionary, Webster's 1828 Dictionary
 - Never denominational — let Scripture interpret Scripture
 - Each avatar includes a `systemPrompt` in voices.ts — this is passed to the Claude API
 
