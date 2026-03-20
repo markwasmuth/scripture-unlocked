@@ -6,37 +6,41 @@
 
 /* ── Theme Variables ─────────────────────────────── */
 :root {
-  /* Slate & Gold (Dark) — default */
-  --bg-primary:  #1C1F26;
-  --bg-surface:  #23272F;
-  --bg-elevated: #2C3140;
-  --bg-border:   #353B4A;
-  --gold:        #E6C55A;
-  --gold-bright: #F5D878;
-  --gold-glow:   rgba(230,197,90,0.14);
-  --text-primary:   #CDD5E0;
-  --text-secondary: #8892A4;
-  --text-muted:     #555E6E;
-  --verse-hover:  rgba(230,197,90,0.04);
-  --verse-active: rgba(230,197,90,0.09);
-  --tab-active-bg: rgba(230,197,90,0.07);
+  /* Deep Navy & Gold (Dark) — refined, high contrast */
+  --bg-primary:  #0F1219;
+  --bg-surface:  #1A1F2B;
+  --bg-elevated: #232A38;
+  --bg-border:   #2A3040;
+  --gold:        #D4AE39;
+  --gold-bright: #E6C55A;
+  --gold-glow:   rgba(212,174,57,0.12);
+  --text-primary:   #F0F2F5;
+  --text-secondary: #B8C0D0;
+  --text-muted:     #6B7588;
+  --text-commentary: #A8B2C4;
+  --verse-hover:  rgba(212,174,57,0.04);
+  --verse-active: rgba(212,174,57,0.08);
+  --tab-active-bg: rgba(212,174,57,0.06);
+  --separator:   rgba(212,174,57,0.08);
 }
 
 [data-theme='light'] {
-  /* Cloud & Stone (Light) — navy accent */
-  --bg-primary:  #F2F2EE;
-  --bg-surface:  #E8E8E2;
-  --bg-elevated: #DDDDD6;
-  --bg-border:   #C0C0B8;
+  /* Clean White & Navy (Light) — BLB-inspired readability */
+  --bg-primary:  #FAFAF8;
+  --bg-surface:  #FFFFFF;
+  --bg-elevated: #F5F5F2;
+  --bg-border:   #E0E0DA;
   --gold:        #1B3A6B;
   --gold-bright: #2952A0;
-  --gold-glow:   rgba(27,58,107,0.10);
+  --gold-glow:   rgba(27,58,107,0.08);
   --text-primary:   #1A1A1A;
-  --text-secondary: #2C2C2C;
-  --text-muted:     #666666;
-  --verse-hover:  rgba(27,58,107,0.04);
-  --verse-active: rgba(27,58,107,0.08);
-  --tab-active-bg: rgba(27,58,107,0.06);
+  --text-secondary: #4A4A4A;
+  --text-muted:     #888888;
+  --text-commentary: #555555;
+  --verse-hover:  rgba(27,58,107,0.03);
+  --verse-active: rgba(27,58,107,0.06);
+  --tab-active-bg: rgba(27,58,107,0.05);
+  --separator:   rgba(0,0,0,0.06);
 }
 
 /* ── Base Reset ─────────────────────────────── */
@@ -78,49 +82,71 @@ html { overscroll-behavior: none; }
 
 /* ── Verse Styling ──────────────────────────── */
 .verse-container {
-  padding: 14px 0 14px 16px;
-  margin-left: -18px;
-  border-left: 2px solid transparent;
-  border-bottom: 1px solid rgba(78,58,21,0.25);
+  padding: 20px 0 20px 20px;
+  margin-left: 0;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--separator);
   transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
 }
 .verse-container:hover {
-  border-left-color: rgba(212,168,67,0.35);
+  border-left-color: rgba(212,174,57,0.30);
   background: var(--verse-hover);
 }
 .verse-container.active {
   border-left-color: var(--gold);
   background: var(--verse-active);
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Verse text — large, clear, high contrast */
+.verse-text {
+  font-family: Georgia, 'Playfair Display', serif;
+  font-size: 19px;
+  line-height: 1.75;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+.verse-number {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  vertical-align: super;
+  margin-right: 6px;
 }
 
 [data-theme='light'] .verse-container {
-  border-bottom-color: rgba(139,105,20,0.15);
+  border-bottom-color: var(--separator);
 }
 
-/* ── Depth Tabs ─────────────────────────────── */
+/* ── Depth Toggle ──────────────────────────── */
 .depth-tabs {
   display: inline-flex;
-  background: var(--bg-surface);
+  background: var(--bg-elevated);
   border: 1px solid var(--bg-border);
-  border-radius: 24px;
+  border-radius: 8px;
   padding: 3px;
   gap: 2px;
 }
 .depth-tab {
-  padding: 5px 14px;
-  border-radius: 20px;
+  padding: 6px 16px;
+  border-radius: 6px;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+}
+.depth-tab:hover {
+  color: var(--text-secondary);
 }
 .depth-tab.active {
-  background: var(--gold);
-  color: var(--bg-primary);
-  font-weight: 700;
+  background: var(--bg-surface);
+  color: var(--gold);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
 /* ── Explain Pill Button ────────────────────── */
@@ -145,25 +171,130 @@ html { overscroll-behavior: none; }
 .commentary-panel {
   background: var(--bg-surface);
   border-left: 3px solid var(--gold);
-  border-radius: 0 8px 8px 0;
-  padding: 14px 18px;
-  margin-top: 10px;
+  border-radius: 0 6px 6px 0;
+  padding: 16px 20px;
+  margin-top: 14px;
+  margin-left: 24px;
 }
 .commentary-label {
   font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--gold);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+  letter-spacing: 0.05em;
   margin-bottom: 8px;
 }
 .commentary-text {
   font-family: 'Lora', Georgia, serif;
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.7;
+  font-size: 15.5px;
+  color: var(--text-commentary);
+  line-height: 1.75;
 }
+
+/* ── Verse Tools Row (BLB-style tabs) ──────── */
+.verse-tools {
+  display: flex;
+  gap: 2px;
+  margin-top: 12px;
+  margin-left: 24px;
+  padding: 3px;
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  width: fit-content;
+}
+.verse-tool-tab {
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.verse-tool-tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-border);
+}
+.verse-tool-tab.active {
+  color: var(--gold);
+  background: var(--bg-surface);
+  font-weight: 600;
+}
+.verse-tool-tab .count {
+  font-size: 10px;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+/* ── Strong's Inline ───────────────────────── */
+.strongs-badge {
+  display: inline-block;
+  background: var(--bg-elevated);
+  border: 1px solid var(--bg-border);
+  color: var(--gold);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: 'Inter', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin: 2px 4px;
+}
+.strongs-badge:hover {
+  border-color: var(--gold);
+  background: var(--gold-glow);
+}
+
+/* ── Cross-Reference Cards ─────────────────── */
+.xref-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-border);
+  border-radius: 6px;
+  margin: 6px 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.xref-card:hover {
+  border-color: var(--gold);
+  background: var(--verse-hover);
+}
+.xref-type {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.xref-type.prophecy { background: rgba(139,26,26,0.15); color: #D4564E; }
+.xref-type.parallel { background: rgba(14,124,107,0.15); color: #2AAA94; }
+.xref-type.doctrine { background: rgba(212,174,57,0.15); color: var(--gold); }
+.xref-type.general  { background: var(--bg-elevated); color: var(--text-muted); }
+
+/* ── Speaker Badge ─────────────────────────── */
+.speaker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.speaker-badge.god_direct { background: rgba(212,174,57,0.12); color: var(--gold); }
+.speaker-badge.narrator { background: var(--bg-elevated); color: var(--text-muted); }
+.speaker-badge.prophetic { background: rgba(139,26,26,0.12); color: #D4564E; }
+.speaker-badge.mixed { background: rgba(14,124,107,0.12); color: #2AAA94; }
 
 /* ── Mode Bar ───────────────────────────────── */
 .mode-bar {
@@ -171,54 +302,72 @@ html { overscroll-behavior: none; }
   top: 0;
   z-index: 100;
   display: flex;
-  background: var(--bg-surface);
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--bg-border);
+  backdrop-filter: blur(12px);
 }
 .mode-tab {
   flex: 1;
-  padding: 13px 8px;
+  padding: 10px 8px;
   text-align: center;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
+}
+.mode-tab:hover {
+  color: var(--text-secondary);
 }
 .mode-tab.active {
   color: var(--text-primary);
   border-bottom-color: var(--gold);
-  background: var(--tab-active-bg);
+  font-weight: 600;
 }
 
 /* ── Chapter Intro Card ─────────────────────── */
 .chapter-intro-card {
   background: var(--bg-surface);
   border: 1px solid var(--bg-border);
-  border-left: 3px solid var(--gold);
-  border-radius: 0 10px 10px 0;
-  padding: 14px 18px;
-  margin: 16px 24px;
+  border-radius: 10px;
+  padding: 24px 28px;
+  margin: 20px 0;
 }
 .chapter-intro-label {
   font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--gold);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  margin-bottom: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
 }
 .chapter-intro-text {
   font-family: 'Lora', Georgia, serif;
-  font-size: 13.5px;
-  color: var(--text-secondary);
-  line-height: 1.65;
+  font-size: 15px;
+  color: var(--text-commentary);
+  line-height: 1.7;
+}
+
+/* ── Chapter Title (from enrichment) ───────── */
+.chapter-title {
+  font-family: 'Cinzel', serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+.chapter-subtitle {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 15px;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* ── Animations ─────────────────────────────── */
