@@ -38,6 +38,7 @@ export default function Sources() {
           <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '1rem' }}>
             <strong style={{ color: '#D4AE39' }}>Strong&apos;s Exhaustive Concordance</strong>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.85 }}>The original Hebrew and Greek definitions behind every English word in the KJV. When you see a Strong&apos;s number in the study, it points you to what God actually said in the original language.</p>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', opacity: 0.7, fontStyle: 'italic' }}>Important: We recommend the original <strong>Abingdon Press edition</strong> (ISBN 978-0687400317). Be aware that some newer editions published under the Strong&apos;s name have been altered from Dr. Strong&apos;s original work. A simple test: if your concordance defines &ldquo;Kenite&rdquo; only as &ldquo;a smith&rdquo; rather than &ldquo;a son of Cain,&rdquo; you may have a revised edition. The original Abingdon edition can be ordered from Shepherd&apos;s Chapel: (800) 643-4645.</p>
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '1rem' }}>
