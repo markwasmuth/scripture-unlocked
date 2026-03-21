@@ -150,6 +150,8 @@ interface StudyReaderProps {
   playingVerseNumber?: number;
   /** Live audio playback position for sentence-level text highlighting */
   audioProgress?: { currentTime: number; duration: number } | null;
+  /** Whether to show teaching/commentary inline under each verse */
+  showTeaching?: boolean;
   onStrongsClick?: (ref: string) => void;
   onVerseSelect?: (verse: VerseRow) => void;
   onListen?: (text: string, label: string, verseNumber?: number) => void;
@@ -329,6 +331,7 @@ export default function StudyReader({
   chapter,
   accentColor,
   mode,
+  showTeaching = true,
   playingVerseNumber,
   audioProgress,
   onStrongsClick,
@@ -344,8 +347,7 @@ export default function StudyReader({
   // Set-based expansion: listen mode keeps multiple verses open,
   // text mode clears and toggles a single verse
   const [expandedVerses, setExpandedVerses] = useState<Set<number>>(new Set());
-  const [commentaryLevel, setCommentaryLevel] =
-    useState<CommentaryLevel>("in-depth");
+  const [activeToolTab, setActiveToolTab] = useState<Record<number, string>>({});
   const verseRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const onVersesLoadedRef = useRef(onVersesLoaded);
   useEffect(() => { onVersesLoadedRef.current = onVersesLoaded; }, [onVersesLoaded]);
@@ -501,7 +503,7 @@ export default function StudyReader({
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-4">
+    <div className="w-full max-w-3xl mx-auto px-4 sm:px-8 py-6">
       {/* ── Floating Mode Indicator (Listen) ── */}
       {mode === "listen" && (
         <div
@@ -530,18 +532,15 @@ export default function StudyReader({
       )}
 
       {/* ── Chapter Header ── */}
-      <header className="mb-2">
-        <div className="flex items-center justify-between">
-          <h2 className="font-cinzel font-semibold text-xl sm:text-2xl tracking-wide" style={{ color: 'var(--gold-bright)' }}>
-            {bookName} {chapter}
-          </h2>
+      <header className="mb-4 text-center">
+        <div className="font-inter text-xs tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>
+          {bookName} &mdash; King James Version (KJV)
         </div>
-        {/* Ornamental divider */}
-        <div className="ornament my-3">
-          <div className="ornament-line" />
-          ✦
-          <div className="ornament-line" />
-        </div>
+        {study?.title ? (
+          <h2 className="chapter-title" style={{ fontSize: 'clamp(20px, 4vw, 28px)' }}>{study.title}</h2>
+        ) : (
+          <h2 className="chapter-title" style={{ fontSize: 'clamp(20px, 4vw, 28px)' }}>{bookName} {chapter}</h2>
+        )}
       </header>
 
       {/* ── Chapter Introduction Card ── */}
@@ -555,21 +554,7 @@ export default function StudyReader({
         ) : null;
       })()}
 
-      {/* ── Commentary Depth Tabs ── */}
-      <div className="flex items-center gap-3 mb-4 px-1">
-        <span className="font-inter text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Depth:</span>
-        <div className="depth-tabs">
-          {COMMENTARY_LEVELS.map((level) => (
-            <button
-              key={level.id}
-              onClick={() => setCommentaryLevel(level.id)}
-              className={`depth-tab${commentaryLevel === level.id ? ' active' : ''}`}
-            >
-              {level.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Show Teaching toggle moved to options bar in BibleStudy.tsx */}
 
       {/* ── Verse List ── */}
       <div className="space-y-1">
@@ -589,10 +574,7 @@ export default function StudyReader({
             ? stripLeadingVerseQuote(cleanTheSeasonText(verse.commentary), verse.verse_text)
             : null;
           const commentaryData = cleanedCommentary
-            ? truncateCommentary(
-                cleanedCommentary,
-                isPlaying ? "in-depth" : commentaryLevel
-              )
+            ? { text: cleanedCommentary, truncated: false }
             : null;
 
           // Compute per-section progress for sentence highlighting
@@ -631,25 +613,15 @@ export default function StudyReader({
               ref={(el) => {
                 if (el) verseRefs.current.set(verse.verse_number, el);
               }}
-              onClick={() => handleVerseClick(verse)}
-              className={`verse-container${isPlaying ? ' active' : isExpanded ? ' active' : ''}`}
-              style={{
-                borderLeftColor: isPlaying
-                  ? 'var(--gold)'
-                  : isExpanded
-                  ? 'rgba(212,168,67,0.5)'
-                  : 'transparent',
-              }}
-              role="button"
-              tabIndex={0}
-              aria-expanded={isExpanded}
-              aria-label={`Verse ${verse.verse_number}${isPlaying ? " (now playing)" : ""}`}
             >
-              {/* ── Verse Text Row ── */}
-              <div className="flex items-start gap-2">
-                <p className="font-lora text-base sm:text-[17px] leading-[1.8] flex-1 transition-colors duration-300"
-                   style={{ color: 'var(--text-primary)' }}>
-                  <span className="font-cinzel font-bold text-[12px] mr-1.5 align-super" style={{ color: 'var(--gold)' }}>
+              {/* ── Verse Row ── */}
+              <div
+                className="py-4"
+                style={{ borderBottom: '1px solid var(--separator)' }}
+              >
+                {/* Verse text with superscript number */}
+                <div style={{ fontFamily: "Georgia, 'Playfair Display', serif", fontSize: 'clamp(16px, 3.5vw, 18px)', lineHeight: 1.75, color: 'var(--text-primary)' }}>
+                  <span className="font-inter font-bold text-[13px] mr-1.5 align-super" style={{ color: 'var(--gold)' }}>
                     {verse.verse_number}
                   </span>
                   {isPlaying && audioProgress ? (
@@ -661,143 +633,104 @@ export default function StudyReader({
                   ) : (
                     verse.verse_text
                   )}
-                </p>
 
-                {/* Now Playing indicator OR Speaker icon in Listen mode */}
-                {mode === "listen" && (
-                  isPlaying ? (
+                  {/* Now Playing indicator in Listen mode */}
+                  {mode === "listen" && isPlaying && (
                     <span
-                      className="shrink-0 mt-1 px-2 py-1 rounded-full text-[10px] font-display
-                                 uppercase tracking-wider animate-pulse"
-                      style={{
-                        backgroundColor: `${accentColor}20`,
-                        color: accentColor,
-                        border: `1px solid ${accentColor}40`,
-                      }}
+                      className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold animate-pulse align-middle"
+                      style={{ backgroundColor: `${accentColor}20`, color: accentColor, fontFamily: "'Inter', sans-serif" }}
                     >
                       ▶ Playing
                     </span>
-                  ) : (
+                  )}
+
+                  {/* Listen button in listen mode */}
+                  {mode === "listen" && !isPlaying && (
                     <button
                       onClick={(e) => handleListenVerse(verse, e)}
-                      className="shrink-0 mt-1 p-1.5 rounded-full transition-colors
-                                 hover:bg-brand-cream/10"
+                      className="ml-2 inline-block p-1 rounded-full transition-colors align-middle"
                       style={{ color: accentColor }}
                       aria-label={`Listen to verse ${verse.verse_number}`}
-                      title="Listen to this verse"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-4 h-4"
-                      >
-                        <path d="M10 3.75a.75.75 0 00-1.264-.546L5.203 6H3.667a.75.75 0 00-.7.48A6.985 6.985 0 002.5 9.25c0 .966.195 1.886.467 2.77a.75.75 0 00.7.48h1.537l3.532 2.796A.75.75 0 0010 14.75V3.75z" />
-                        <path d="M11.305 4.882a.75.75 0 10-.61 1.37 4.002 4.002 0 010 5.997.75.75 0 00.61 1.37 5.502 5.502 0 000-8.737z" />
-                        <path d="M13.56 3.27a.75.75 0 10-.52 1.409 7.002 7.002 0 010 9.143.75.75 0 00.52 1.408 8.502 8.502 0 000-11.96z" />
-                      </svg>
+                      🔊
                     </button>
-                  )
+                  )}
+                </div>
+
+                {/* Teaching — shows automatically when showTeaching is on */}
+                {showTeaching && commentaryData && (
+                  <div className="mt-3 ml-6" style={{
+                    borderLeft: '3px solid var(--gold)',
+                    paddingLeft: '16px',
+                  }}>
+                    {/* Speaker badge */}
+                    {verse.speaker_type && (
+                      <div className="mb-1.5">
+                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold" style={{
+                          fontFamily: "'Inter', sans-serif",
+                          background: verse.speaker_type === 'god_direct' ? 'rgba(27,58,107,0.1)' : 'var(--bg-elevated)',
+                          color: verse.speaker_type === 'god_direct' ? 'var(--gold)' : 'var(--text-muted)',
+                        }}>
+                          {verse.speaker_type === 'god_direct' ? 'God Speaking' :
+                           verse.speaker_type === 'narrator' ? 'Narrator' :
+                           verse.speaker_type === 'prophetic' ? 'Prophetic' :
+                           verse.speaker_type === 'mixed' ? 'Mixed' :
+                           verse.speaker_type}
+                        </span>
+                      </div>
+                    )}
+
+                    <p className="commentary-text whitespace-pre-line">
+                      {isPlaying && audioProgress ? (
+                        <HighlightedText
+                          text={commentaryData.text}
+                          progress={commentaryProgress}
+                          accentColor={accentColor}
+                        />
+                      ) : (
+                        commentaryData.text
+                      )}
+                    </p>
+
+                    {/* Strong's inline */}
+                    {strongsRefs.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {strongsRefs.map((ref) => (
+                          <button key={ref} onClick={(e) => handleStrongsClick(ref, e)} className="strongs-badge">{ref}</button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Cross-refs inline */}
+                    {crossRefs.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="text-[11px] font-inter" style={{ color: 'var(--text-muted)' }}>See also:</span>
+                        {crossRefs.map((ref, i) => (
+                          <span key={i} className="text-xs font-lora" style={{ color: 'var(--gold)' }}>
+                            {ref}{i < crossRefs.length - 1 && " · "}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Listen to commentary */}
+                    {mode === "listen" && verse.commentary && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onListen?.(verse.commentary!, `${bookName} ${verse.chapter}:${verse.verse_number} — Commentary`, verse.verse_number);
+                        }}
+                        className="mt-3 flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded transition-colors"
+                        style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--gold)', border: '1px solid var(--bg-border)', fontFamily: "'Inter', sans-serif" }}
+                      >
+                        🔊 Listen to commentary
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* ── Expand Hint ── */}
-              {hasExtras && !isExpanded && (
-                <p className="text-[10px] mt-1 font-inter" style={{ color: 'var(--text-muted)' }}>
-                  tap to expand commentary
-                </p>
-              )}
-
-              {/* ── Expanded Content ── */}
-              {isExpanded && hasExtras && (
-                <div className="mt-3 space-y-3 animate-fadeIn">
-                  {/* Commentary */}
-                  {commentaryData && (
-                    <div className="commentary-panel">
-                      <div className="commentary-label">Moses Explains</div>
-                      <p className="commentary-text whitespace-pre-line">
-                        {isPlaying && audioProgress ? (
-                          <HighlightedText
-                            text={commentaryData.text}
-                            progress={commentaryProgress}
-                            accentColor={accentColor}
-                          />
-                        ) : (
-                          commentaryData.text
-                        )}
-                      </p>
-
-                      {/* "Read full commentary" if truncated */}
-                      {commentaryData.truncated && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCommentaryLevel("in-depth");
-                          }}
-                          className="mt-1.5 text-[11px] font-inter transition-colors"
-                          style={{ color: 'var(--gold)' }}
-                        >
-                          ▸ Read full commentary
-                        </button>
-                      )}
-
-                      {/* Listen to commentary in listen mode */}
-                      {mode === "listen" && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onListen?.(
-                              verse.commentary!,
-                              `${bookName} ${verse.chapter}:${verse.verse_number} — Commentary`,
-                              verse.verse_number
-                            );
-                          }}
-                          className="mt-2 flex items-center gap-1.5 text-[11px] font-body
-                                     px-2 py-1 rounded transition-colors hover:brightness-125"
-                          style={{
-                            backgroundColor: `${accentColor}10`,
-                            color: accentColor,
-                          }}
-                        >
-                          🔊 Listen to commentary
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Strong's References */}
-                  {strongsRefs.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      <span className="font-inter text-[10px] uppercase tracking-wider mr-1 self-center" style={{ color: 'var(--text-muted)' }}>
-                        Strong&apos;s:
-                      </span>
-                      {strongsRefs.map((ref) => (
-                        <button
-                          key={ref}
-                          onClick={(e) => handleStrongsClick(ref, e)}
-                          className="explain-pill"
-                        >
-                          {ref}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Cross-References */}
-                  {crossRefs.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="font-inter text-[10px] uppercase tracking-wider mr-1 self-center" style={{ color: 'var(--text-muted)' }}>
-                        See also:
-                      </span>
-                      {crossRefs.map((ref, i) => (
-                        <span key={i} className="font-lora text-xs italic" style={{ color: 'var(--text-secondary)' }}>
-                          {ref}{i < crossRefs.length - 1 && ","}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Old tools panel removed — teaching shows inline above */}
             </div>
           );
         })}

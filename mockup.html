@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scripture Unlocked — UI Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #FAFAF8; color: #1A1A1A; font-family: 'Lora', Georgia, serif; }
+
+/* ── Header ── */
+.header {
+  background: #1B3A6B;
+  border-bottom: 1px solid #15305A;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFFFFF;
+  white-space: nowrap;
+  letter-spacing: 0.08em;
+}
+.logo-sub {
+  font-family: 'Lora', serif;
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  font-style: italic;
+}
+.search-bar {
+  flex: 1;
+  max-width: 480px;
+  position: relative;
+}
+.search-bar input {
+  width: 100%;
+  background: #FFFFFF;
+  border: 1px solid #E0E0DA;
+  border-radius: 8px;
+  padding: 10px 16px 10px 40px;
+  font-family: 'Lora', serif;
+  font-size: 14px;
+  color: #1A1A1A;
+  outline: none;
+  transition: border-color 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.search-bar input:focus {
+  border-color: #1B3A6B;
+  box-shadow: 0 1px 6px rgba(27,58,107,0.15);
+}
+.search-bar input::placeholder { color: #999; }
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 14px;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.theme-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 8px;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* ── Nav Bar ── */
+.nav-bar {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E0E0DA;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.nav-tab {
+  padding: 10px 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #888;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-tab:hover { color: #555; }
+.nav-tab.active {
+  color: #1B3A6B;
+  border-bottom-color: #1B3A6B;
+  font-weight: 600;
+}
+.nav-spacer { flex: 1; }
+.nav-chapter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #555;
+}
+.nav-arrow {
+  background: #1B3A6B;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 14px;
+  color: #FFFFFF;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Options Bar ── */
+.options-bar {
+  background: #F5F5F2;
+  border-bottom: 1px solid #E0E0DA;
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #888;
+}
+.option-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.option-toggle input[type="checkbox"] {
+  accent-color: #1B3A6B;
+}
+
+/* ── Main Content ── */
+.main { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+.chapter-header {
+  margin-bottom: 24px;
+}
+.chapter-ref {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.chapter-title-main {
+  font-family: 'Cinzel', serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: #1A1A1A;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+.chapter-thread {
+  font-family: 'Lora', serif;
+  font-size: 14px;
+  color: #555;
+  line-height: 1.65;
+  padding: 16px 20px;
+  background: #FFFFFF;
+  border: 1px solid #E0E0DA;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+/* ── Verse Row ── */
+.verse-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid #E8E8E4;
+  transition: background 0.15s;
+}
+.verse-row:hover {
+  background: rgba(27,58,107,0.02);
+}
+.verse-tools-col {
+  width: 60px;
+  flex-shrink: 0;
+  padding-top: 3px;
+}
+.tools-btn {
+  background: #1B3A6B;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+.tools-btn:hover {
+  background: #254d8a;
+}
+.verse-ref-col {
+  width: 80px;
+  flex-shrink: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #888;
+  padding-top: 5px;
+}
+.verse-text-col {
+  flex: 1;
+  font-family: Georgia, 'Playfair Display', serif;
+  font-size: 18px;
+  line-height: 1.75;
+  color: #1A1A1A;
+}
+.verse-text-col .red-letter {
+  color: #C41E3A;
+}
+
+/* ── Expanded Tools Panel ── */
+.tools-panel {
+  background: #FFFFFF;
+  border: 1px solid #E0E0DA;
+  border-radius: 8px;
+  margin: 12px 0 12px 60px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.tools-tabs {
+  display: flex;
+  border-bottom: 1px solid #E0E0DA;
+  background: #F8F8F6;
+}
+.tools-tab {
+  padding: 10px 18px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #888;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.tools-tab:hover { color: #555; }
+.tools-tab.active {
+  color: #1B3A6B;
+  border-bottom-color: #1B3A6B;
+  font-weight: 600;
+}
+.tools-content {
+  padding: 16px 20px;
+}
+.teaching-text {
+  font-family: 'Lora', serif;
+  font-size: 15px;
+  color: #444;
+  line-height: 1.75;
+}
+.strongs-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.strongs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #F5F5F2;
+  border: 1px solid #E0E0DA;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.strongs-chip:hover { border-color: #1B3A6B; }
+.strongs-chip .num {
+  color: #1B3A6B;
+  font-weight: 700;
+}
+.strongs-chip .word {
+  color: #333;
+}
+.strongs-chip .def {
+  color: #888;
+  font-style: italic;
+}
+
+/* ── Cross Refs ── */
+.xref-list { display: flex; flex-direction: column; gap: 8px; }
+.xref-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #F8F8F6;
+  border: 1px solid #E0E0DA;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.xref-item:hover { border-color: #1B3A6B; }
+.xref-badge {
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.xref-badge.prophecy { background: rgba(196,30,58,0.1); color: #C41E3A; }
+.xref-badge.parallel { background: rgba(14,124,107,0.1); color: #0E7C6B; }
+.xref-badge.doctrine { background: rgba(27,58,107,0.1); color: #1B3A6B; }
+.xref-verse { font-family: 'Inter', sans-serif; font-size: 13px; color: #1B3A6B; font-weight: 600; }
+.xref-reason { font-family: 'Lora', serif; font-size: 13px; color: #888; }
+
+/* ── Speaker Badge ── */
+.speaker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.speaker.god { background: rgba(27,58,107,0.1); color: #1B3A6B; }
+.speaker.narrator { background: #F0F0EC; color: #888; }
+
+/* ── Footer ── */
+.footer {
+  text-align: center;
+  padding: 32px 24px;
+  font-family: 'Lora', serif;
+  font-size: 13px;
+  color: #888;
+  border-top: 1px solid #E0E0DA;
+  margin-top: 48px;
+}
+.footer .tagline { color: #1B3A6B; font-style: italic; margin-bottom: 8px; }
+.footer a { color: #1B3A6B; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- ════ HEADER ════ -->
+<div class="header">
+  <div>
+    <div class="logo">SCRIPTURE UNLOCKED</div>
+    <div class="logo-sub">God's Word. Your Blueprint for Living.</div>
+  </div>
+  <div style="flex:1"></div>
+  <div class="header-right">
+    <div class="theme-btn">&#9790;</div>
+  </div>
+</div>
+
+<!-- ════ SEARCH BAR (full width, prominent) ════ -->
+<div style="background:#F5F5F2; border-bottom:1px solid #E0E0DA; padding:10px 24px;">
+  <div class="search-bar" style="max-width:100%;">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" placeholder="Search verse, word, or ask a question... (e.g. John 3:16, What is the Gap Theory?, H430)">
+  </div>
+</div>
+
+<!-- ════ NAV BAR (clean — no voice selector in Read mode) ════ -->
+<div class="nav-bar">
+  <div class="nav-tab active">&#128214; Read</div>
+  <div class="nav-tab">&#128266; Listen</div>
+  <div class="nav-tab">&#128172; Ask</div>
+  <div class="nav-spacer"></div>
+  <div class="nav-chapter">
+    <span class="nav-arrow">&larr; Prev</span>
+    <span>Genesis 1 <span style="color:#6B7588">/ 50</span></span>
+    <span class="nav-arrow">Next &rarr;</span>
+  </div>
+</div>
+
+<!-- ════ OPTIONS BAR ════ -->
+<div class="options-bar">
+  <label class="option-toggle"><input type="checkbox" checked> Show Teaching</label>
+  <label class="option-toggle"><input type="checkbox"> Strong's Numbers</label>
+  <label class="option-toggle"><input type="checkbox"> Cross-References</label>
+  <label class="option-toggle"><input type="checkbox"> Red Letter</label>
+  <div style="flex:1"></div>
+  <span style="color:#D4AE39; cursor:pointer;">&#9881; Options</span>
+</div>
+
+<!-- ════ MAIN CONTENT ════ -->
+<div class="main">
+
+  <!-- Chapter Header -->
+  <div class="chapter-header">
+    <div class="chapter-ref">Genesis &mdash; King James Version (KJV)</div>
+    <div class="chapter-title-main">The Beginning &mdash; From Judgment to Restoration</div>
+    <div class="chapter-thread">
+      This chapter reveals two distinct creations: the original perfect creation of verse 1, and the restoration that begins in verse 2 after the destruction of the first earth age. Understanding the gap between these two verses unlocks the entire plan of God from Genesis to Revelation.
+    </div>
+  </div>
+
+  <!-- ═══ Verse 1 ═══ -->
+  <div class="verse-row">
+    <div class="verse-tools-col"><button class="tools-btn">TOOLS</button></div>
+    <div class="verse-ref-col">Gen 1:1</div>
+    <div class="verse-text-col">
+      In the beginning God created the heaven and the earth.
+    </div>
+  </div>
+
+  <!-- Expanded Tools Panel for Verse 1 -->
+  <div class="tools-panel">
+    <div class="tools-tabs">
+      <div class="tools-tab active">Teaching</div>
+      <div class="tools-tab">Strong's <span style="opacity:0.5">(3)</span></div>
+      <div class="tools-tab">Cross-Refs <span style="opacity:0.5">(5)</span></div>
+    </div>
+    <div class="tools-content">
+      <div class="speaker narrator">Narrator</div>
+      <div class="teaching-text">
+        Here we find the foundational truth that establishes everything else in Scripture. There are two bodies mentioned — heaven and earth — and God created both. The verse simply states a fact and leaves the time factor completely open. It does not say when, but reveals the eternal span of time and the creative power of our Almighty God. This original creation was perfect, as we learn from Isaiah chapter 45 verse 18, where God declares He created the earth not in vain but to be inhabited. The Hebrew word <em>bara</em> means to create out of nothing, which only God can do. This verse establishes the first earth age when everything was in perfect order before Satan's rebellion.
+      </div>
+      <div class="strongs-inline">
+        <div class="strongs-chip"><span class="num">H7225</span> <span class="word">beginning</span> <span class="def">— re'shiyth, the first</span></div>
+        <div class="strongs-chip"><span class="num">H430</span> <span class="word">God</span> <span class="def">— Elohim, plural deity</span></div>
+        <div class="strongs-chip"><span class="num">H1254</span> <span class="word">created</span> <span class="def">— bara, to create from nothing</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Verse 2 ═══ -->
+  <div class="verse-row">
+    <div class="verse-tools-col"><button class="tools-btn">TOOLS</button></div>
+    <div class="verse-ref-col">Gen 1:2</div>
+    <div class="verse-text-col">
+      And the earth was without form, and void; and darkness was upon the face of the deep. And the Spirit of God moved upon the face of the waters.
+    </div>
+  </div>
+
+  <!-- ═══ Verse 3 ═══ -->
+  <div class="verse-row">
+    <div class="verse-tools-col"><button class="tools-btn">TOOLS</button></div>
+    <div class="verse-ref-col">Gen 1:3</div>
+    <div class="verse-text-col">
+      <span class="red-letter">And God said, Let there be light: and there was light.</span>
+    </div>
+  </div>
+
+  <!-- Expanded Tools for Verse 3 (Cross-Refs tab active) -->
+  <div class="tools-panel">
+    <div class="tools-tabs">
+      <div class="tools-tab">Teaching</div>
+      <div class="tools-tab">Strong's <span style="opacity:0.5">(2)</span></div>
+      <div class="tools-tab active">Cross-Refs <span style="opacity:0.5">(4)</span></div>
+    </div>
+    <div class="tools-content">
+      <div class="speaker god">God Speaking</div>
+      <div class="xref-list">
+        <div class="xref-item">
+          <span class="xref-badge doctrine">Doctrine</span>
+          <span class="xref-verse">John 1:1-5</span>
+          <span class="xref-reason">In the beginning was the Word — Christ is the light</span>
+        </div>
+        <div class="xref-item">
+          <span class="xref-badge parallel">Parallel</span>
+          <span class="xref-verse">2 Cor 4:6</span>
+          <span class="xref-reason">God commanded light to shine out of darkness</span>
+        </div>
+        <div class="xref-item">
+          <span class="xref-badge prophecy">Prophecy</span>
+          <span class="xref-verse">Rev 21:23</span>
+          <span class="xref-reason">The Lamb is the light — no need for the sun</span>
+        </div>
+        <div class="xref-item">
+          <span class="xref-badge doctrine">Doctrine</span>
+          <span class="xref-verse">Isaiah 45:7</span>
+          <span class="xref-reason">I form the light and create darkness — God's sovereignty</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Verse 4 ═══ -->
+  <div class="verse-row">
+    <div class="verse-tools-col"><button class="tools-btn">TOOLS</button></div>
+    <div class="verse-ref-col">Gen 1:4</div>
+    <div class="verse-text-col">
+      And God saw the light, that it was good: and God divided the light from the darkness.
+    </div>
+  </div>
+
+  <!-- ═══ Verse 5 ═══ -->
+  <div class="verse-row">
+    <div class="verse-tools-col"><button class="tools-btn">TOOLS</button></div>
+    <div class="verse-ref-col">Gen 1:5</div>
+    <div class="verse-text-col">
+      And God called the light Day, and the darkness he called Night. And the evening and the morning were the first day.
+    </div>
+  </div>
+
+  <!-- ═══ Verse 6 ═══ -->
+  <div class="verse-row">
+    <div class="verse-tools-col"><button class="tools-btn">TOOLS</button></div>
+    <div class="verse-ref-col">Gen 1:6</div>
+    <div class="verse-text-col">
+      And God said, Let there be a firmament in the midst of the waters, and let it divide the waters from the waters.
+    </div>
+  </div>
+
+  <!-- ═══ Verse 7 ═══ -->
+  <div class="verse-row">
+    <div class="verse-tools-col"><button class="tools-btn">TOOLS</button></div>
+    <div class="verse-ref-col">Gen 1:7</div>
+    <div class="verse-text-col">
+      And God made the firmament, and divided the waters which were under the firmament from the waters which were above the firmament: and it was so.
+    </div>
+  </div>
+
+</div>
+
+<!-- ════ FOOTER ════ -->
+<div class="footer">
+  <div class="tagline">BE who God made you. DO what He commanded. HAVE what He promised.</div>
+  <div>&copy; 2026 Scripture Unlocked &bull; <a href="/sources">Sources & Acknowledgments</a></div>
+</div>
+
+</body>
+</html>

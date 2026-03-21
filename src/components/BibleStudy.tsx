@@ -26,9 +26,9 @@ import StrongsModal from "./StrongsModal";
 export type InteractionMode = "text" | "listen" | "talk";
 
 const MODE_CONFIG: { id: InteractionMode; icon: string; label: string }[] = [
-  { id: "text", icon: "📖", label: "Text" },
+  { id: "text", icon: "📖", label: "Read" },
   { id: "listen", icon: "🔊", label: "Listen" },
-  { id: "talk", icon: "💬", label: "Talk" },
+  { id: "talk", icon: "💬", label: "Ask" },
 ];
 
 export default function BibleStudy() {
@@ -36,11 +36,11 @@ export default function BibleStudy() {
   const [activeVoice, setActiveVoice] = useState<AvatarId>(
     DEFAULT_VOICE as AvatarId
   );
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   // Sync theme to <html> data-theme attribute
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : '');
+    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : '');
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
@@ -53,6 +53,7 @@ export default function BibleStudy() {
   const [mode, setMode] = useState<InteractionMode>("text");
   const [activeStrongsRef, setActiveStrongsRef] = useState<string | null>(null);
   const [activeVerse, setActiveVerse] = useState<VerseRow | null>(null);
+  const [showTeaching, setShowTeaching] = useState(true);
 
   // ── Auto-Continue Playback State ──
   const [playingVerseNumber, setPlayingVerseNumber] = useState<number | null>(null);
@@ -306,34 +307,24 @@ export default function BibleStudy() {
   return (
     <div className="min-h-screen font-lora" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
 
-      {/* ═══ Header ═══ */}
-      <header style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--bg-border)' }}
-              className="px-4 py-3 flex items-center justify-between">
-        {/* Left: Voice + Book selectors */}
-        <div className="flex items-center gap-2 min-w-0">
-          <VoiceSelector selected={activeVoice} onSelect={setActiveVoice} />
-          <BookSelector
-            onSelect={handleBookSelect}
-            currentBook={selectedBookName ?? undefined}
-            currentChapter={selectedChapter ?? undefined}
-          />
-        </div>
-
+      {/* ═══ Header (Navy) ═══ */}
+      <header style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--bg-border)' }}
+              className="px-4 py-3 flex items-center justify-center relative">
         {/* Center: Logo */}
-        <div className="absolute left-1/2 -translate-x-1/2 text-center hidden sm:block">
-          <div className="font-cinzel font-bold tracking-[0.12em] text-sm" style={{ color: 'var(--gold-bright)' }}>
+        <div className="text-center">
+          <div className="font-cinzel font-bold tracking-[0.12em] text-sm sm:text-base" style={{ color: 'var(--header-text)' }}>
             SCRIPTURE UNLOCKED
           </div>
-          <div className="font-lora italic text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+          <div className="font-lora italic text-[9px] mt-0.5" style={{ color: 'var(--header-text)', opacity: 0.6 }}>
             {BRAND_META.tagline}
           </div>
         </div>
 
-        {/* Right: Theme Toggle */}
+        {/* Right: Theme Toggle (absolute positioned) */}
         <button
           onClick={toggleTheme}
-          className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110 shrink-0"
-          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--bg-border)', color: 'var(--gold)' }}
+          className="absolute right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110 shrink-0"
+          style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'var(--header-text)' }}
           aria-label="Toggle theme"
           title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >
@@ -341,7 +332,45 @@ export default function BibleStudy() {
         </button>
       </header>
 
-      {/* ═══ Mode Bar (sticky) ═══ */}
+      {/* ═══ Search / Book Selector Bar ═══ */}
+      <div style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--bg-border)' }} className="px-4 py-3">
+        <div className="max-w-4xl mx-auto flex items-center justify-center gap-3">
+          <span className="text-lg" style={{ color: 'var(--text-muted)' }}>🔍</span>
+          <BookSelector
+            onSelect={handleBookSelect}
+            currentBook={selectedBookName ?? undefined}
+            currentChapter={selectedChapter ?? undefined}
+          />
+        </div>
+      </div>
+
+      {/* ═══ Options Bar (Show Teaching, Strong's, Cross-Refs, Red Letter, Jesus Quotes) ═══ */}
+      <div style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--bg-border)' }} className="px-4 py-2">
+        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-x-5 gap-y-1 font-inter text-xs" style={{ color: 'var(--text-muted)' }}>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" checked={showTeaching} onChange={(e) => setShowTeaching(e.target.checked)} style={{ accentColor: 'var(--gold)' }} />
+            Show Teaching
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" style={{ accentColor: 'var(--gold)' }} />
+            Strong&apos;s Numbers
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" style={{ accentColor: 'var(--gold)' }} />
+            Cross-References
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" style={{ accentColor: 'var(--gold)' }} />
+            Red Letter
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" style={{ accentColor: '#6B21A8' }} />
+            <span style={{ color: '#6B21A8' }}>Jesus Quotes</span>
+          </label>
+        </div>
+      </div>
+
+      {/* ═══ Mode Tabs (centered) ═══ */}
       <div className="mode-bar">
         {MODE_CONFIG.map((m) => (
           <button
@@ -351,43 +380,40 @@ export default function BibleStudy() {
             aria-pressed={mode === m.id}
           >
             <span>{m.icon}</span>
-            <span className="hidden sm:inline">{m.label}</span>
+            <span>{m.label}</span>
           </button>
         ))}
+
+        {/* Voice selector — only in Listen/Ask modes */}
+        {(mode === 'listen' || mode === 'talk') && (
+          <div className="flex items-center ml-4" style={{ borderLeft: '1px solid var(--bg-border)', paddingLeft: '12px' }}>
+            <VoiceSelector selected={activeVoice} onSelect={setActiveVoice} />
+          </div>
+        )}
       </div>
 
-      {/* ═══ Chapter Navigation Bar ═══ */}
+      {/* ═══ Chapter Navigation (centered, separate row) ═══ */}
       {selectedBookName && selectedChapter && selectedBookTotalChapters && (
         <div
-          className="flex items-center justify-between px-4 py-2"
-          style={{ borderBottom: '1px solid var(--bg-border)', background: 'var(--bg-primary)' }}
+          className="flex items-center justify-center gap-4 px-4 py-2"
+          style={{ borderBottom: '1px solid var(--bg-border)', background: 'var(--bg-primary)', fontFamily: "'Inter', sans-serif", fontSize: '13px' }}
         >
           <button
             onClick={handlePrevChapter}
             disabled={selectedChapter <= 1}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-125"
-            style={{
-              background: selectedChapter <= 1 ? 'transparent' : `${voice.accent}15`,
-              color: voice.accent,
-              border: `1px solid ${selectedChapter <= 1 ? 'transparent' : voice.accent + '30'}`,
-            }}
+            className="px-4 py-1.5 rounded text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ background: 'var(--gold)', color: '#FFFFFF', border: 'none' }}
           >
             ← Prev
           </button>
-
-          <span className="font-cinzel text-sm tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+          <span style={{ color: 'var(--text-secondary)' }}>
             {selectedBookName} {selectedChapter} <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>/ {selectedBookTotalChapters}</span>
           </span>
-
           <button
             onClick={handleNextChapter}
             disabled={selectedChapter >= selectedBookTotalChapters}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-125"
-            style={{
-              background: selectedChapter >= selectedBookTotalChapters ? 'transparent' : `${voice.accent}15`,
-              color: voice.accent,
-              border: `1px solid ${selectedChapter >= selectedBookTotalChapters ? 'transparent' : voice.accent + '30'}`,
-            }}
+            className="px-4 py-1.5 rounded text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ background: 'var(--gold)', color: '#FFFFFF', border: 'none' }}
           >
             Next →
           </button>
@@ -405,6 +431,7 @@ export default function BibleStudy() {
               chapter={selectedChapter}
               accentColor={voice.accent}
               mode={mode as "text" | "listen"}
+              showTeaching={showTeaching}
               playingVerseNumber={playingVerseNumber ?? undefined}
               audioProgress={audioProgress}
               onStrongsClick={handleStrongsClick}
@@ -422,15 +449,15 @@ export default function BibleStudy() {
                 ✦
                 <div className="ornament-line" />
               </div>
-              <span className="text-5xl">{voice.icon}</span>
+              <span className="text-5xl">📜</span>
               <div className="text-center max-w-md">
-                <h2 className="font-cinzel text-lg sm:text-xl mb-2" style={{ color: 'var(--gold-bright)' }}>
+                <h2 className="font-cinzel text-lg sm:text-xl mb-2" style={{ color: 'var(--gold)' }}>
                   Welcome to Scripture Unlocked
                 </h2>
                 <p className="font-lora text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                   Select a book and chapter above to begin your verse-by-verse
-                  study, or switch to <strong>Talk</strong> mode to ask{" "}
-                  {voice.name} a question about Scripture.
+                  study, or switch to <strong>Ask</strong> mode to ask a
+                  question about Scripture.
                 </p>
               </div>
 
@@ -440,12 +467,11 @@ export default function BibleStudy() {
                   <button
                     key={i}
                     onClick={() => setMode("talk")}
-                    className="text-xs font-body px-3 py-1.5 rounded-full
-                               transition-colors hover:brightness-125"
+                    className="text-xs font-body px-3 py-1.5 rounded-full transition-colors"
                     style={{
-                      backgroundColor: `${voice.accent}10`,
-                      color: `${voice.accent}CC`,
-                      border: `1px solid ${voice.accent}25`,
+                      backgroundColor: 'var(--bg-elevated)',
+                      color: 'var(--gold)',
+                      border: '1px solid var(--bg-border)',
                     }}
                   >
                     {q}

@@ -138,10 +138,10 @@ export default function BookSelector({
                 <span>Back to Books</span>
               </button>
               <div className="px-4 py-3 border-b border-brand-gold/10">
-                <h3 className="text-brand-cream font-display text-base">
+                <h3 className="font-display text-base" style={{ color: 'var(--text-primary)' }}>
                   {selectedBook.name}
                 </h3>
-                <p className="text-brand-cream/40 text-xs mt-0.5">
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   {selectedBook.total_chapters} chapters
                 </p>
               </div>
@@ -154,16 +154,12 @@ export default function BookSelector({
                     <button
                       key={ch}
                       onClick={() => handleChapterClick(ch)}
-                      className={`
-                        w-full aspect-square rounded-lg text-sm font-body
-                        flex items-center justify-center transition-all
-                        ${
-                          currentBook === selectedBook.name &&
-                          currentChapter === ch
-                            ? "bg-brand-gold text-brand-navy font-bold"
-                            : "bg-brand-gold/5 text-brand-cream/70 hover:bg-brand-gold/20 hover:text-brand-cream"
-                        }
-                      `}
+                      className="w-full aspect-square rounded-lg text-sm font-body flex items-center justify-center transition-all"
+                      style={
+                        currentBook === selectedBook.name && currentChapter === ch
+                          ? { background: 'var(--gold)', color: '#FFFFFF', fontWeight: 700 }
+                          : { background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--bg-border)' }
+                      }
                     >
                       {ch}
                     </button>
@@ -184,7 +180,7 @@ export default function BookSelector({
                       className="py-3 px-2 rounded-lg text-sm font-display font-semibold transition-all"
                       style={activeTestament === t
                         ? { backgroundColor: "var(--gold)", color: "#fff" }
-                        : { backgroundColor: "var(--bg-elevated,#23272F)", color: "var(--text-muted,#8892A4)", border: "1px solid var(--bg-border,#353B4A)" }
+                        : { backgroundColor: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--bg-border)" }
                       }
                     >
                       {t === "OT" ? "📜 Old Testament" : "✝️ New Testament"}
@@ -201,7 +197,7 @@ export default function BookSelector({
                         className="py-1.5 px-2 rounded-lg text-xs font-display transition-all"
                         style={activeTestament === t
                           ? { backgroundColor: "var(--gold)", color: "#fff" }
-                          : { backgroundColor: "var(--bg-elevated,#23272F)", color: "var(--text-muted,#8892A4)", border: "1px solid var(--bg-border,#353B4A)" }
+                          : { backgroundColor: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--bg-border)" }
                         }
                       >
                         {TESTAMENT_SHORT[t]}
